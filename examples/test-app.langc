@@ -1,0 +1,49 @@
+IMPORT Architect FROM "./profiles/architect.langc"
+IMPORT Security FROM "./profiles/security.langc"
+
+PROJECT "test-app" {
+
+    SCOPE = full,
+    REFERENCE = none,
+    PROFILES = [Architect, Security],
+
+    // ─── Database Layer ───
+    CREATE DB "users-db" {
+        LNG = postgresql,
+        DEPENDS = none,
+        TABLE "users" {
+            id: int -> "primary key, auto increment",
+            name: string -> "required, max 100 chars",
+            email: string -> "required, unique",
+            created_at: datetime -> "auto-set on creation"
+        }
+    },
+
+    // ─── API Layer ───
+    CREATE API "users" {
+        LNG = python,
+        FRAMEWORK = fastapi,
+        SCOPE = full,
+        DEPENDS = [DB.users-db],
+
+        METHOD GET    "/users"      -> "list all users with pagination",
+        METHOD POST   "/users"      -> "create a user with name, email",
+        METHOD GET    "/users/{id}" -> "get user by id",
+        METHOD PUT    "/users/{id}" -> "update user name or email",
+        METHOD DELETE "/users/{id}" -> "delete user by id"
+    },
+
+    // ─── UI Layer ───
+    CREATE WEBUI "users-display" {
+        LNG = React,
+        FRAMEWORK = nextjs,
+        SCOPE = full,
+        DEPENDS = [API.users],
+
+        DISPLAY API.users.GET("/users")      -> "Table with all users, paginated",
+        DISPLAY API.users.POST("/users")     -> "Form to create a new user",
+        DISPLAY API.users.GET("/users/{id}") -> "Search bar to find user by id",
+        DISPLAY API.users.PUT("/users/{id}") -> "Edit form, pre-filled with user data",
+        DISPLAY API.users.DELETE("/users/{id}") -> "Delete button with confirmation dialog"
+    }
+}

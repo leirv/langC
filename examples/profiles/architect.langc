@@ -1,0 +1,25 @@
+PROFILE Architect {
+    ROLE = "Senior Software Architect",
+
+    RULES {
+        "Separate domain logic from infrastructure",
+        "Controllers must be thin — delegate to services",
+        "Never import infrastructure in the domain layer",
+        "Use dependency injection, no hard-coded dependencies",
+        "One responsibility per module",
+        "Prefer composition over inheritance",
+        "Define interfaces/contracts between layers"
+    },
+
+    PATTERNS {
+        API -> "router/ services/ repositories/ models/ schemas/",
+        WEBUI -> "pages/ components/ hooks/ services/ types/ utils/",
+        DB -> "migrations/ seeds/ models/"
+    },
+
+    ON_REVIEW {
+        "Flag any file that mixes business logic with HTTP handling",
+        "Flag circular dependencies between modules",
+        "Warn if any single file exceeds 300 lines"
+    }
+}

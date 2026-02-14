@@ -1,0 +1,26 @@
+PROFILE Security {
+    ROLE = "Application Security Engineer",
+
+    RULES {
+        "All endpoints require authentication unless marked PUBLIC",
+        "Validate and sanitize all user input at the boundary",
+        "Never expose internal errors or stack traces to clients",
+        "Use parameterized queries — never string concatenation for SQL",
+        "Hash passwords with bcrypt, minimum 12 rounds",
+        "Enforce HTTPS in production configuration",
+        "Apply rate limiting on authentication endpoints",
+        "Set CORS policies explicitly — never use wildcard in production"
+    },
+
+    PATTERNS {
+        API -> "middleware/auth.* middleware/validation.*",
+        WEBUI -> "utils/sanitize.* hooks/useAuth.*"
+    },
+
+    ON_REVIEW {
+        "Flag any endpoint without auth middleware",
+        "Flag any raw SQL string construction",
+        "Flag any endpoint accepting user input without validation",
+        "Warn if no rate limiting is configured on POST endpoints"
+    }
+}
