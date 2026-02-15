@@ -1,17 +1,20 @@
 import { describe, it, expect } from "vitest";
 import { HooksGenerator } from "../../src/codegen/generators/hooks.js";
 import type { CompilationContext, ResolvedProfile } from "../../src/codegen/types.js";
+import type { CreateBlock } from "../../src/ast/nodes.js";
 
 const loc = { line: 1, column: 1 };
 
-function makeCtx(profiles: ResolvedProfile[]): CompilationContext {
+function makeCtx(profiles: ResolvedProfile[], blocks: CreateBlock[] = []): CompilationContext {
   return {
     projectName: "test-app",
     scope: "full",
     reference: "none",
+    gate: "phase-by-phase",
     profiles,
     profileExcepts: new Map(),
-    createBlocks: [],
+    blockProfiles: new Map(),
+    createBlocks: blocks,
     updateBlocks: [],
     dependencyGraph: { nodes: new Map(), order: [], phases: [] },
     ast: { kind: "Program", imports: [], declarations: [], loc },
@@ -24,8 +27,8 @@ describe("HooksGenerator", () => {
 
   it("generates hook script per profile with onReview", () => {
     const profiles: ResolvedProfile[] = [
-      { name: "Security", role: null, rules: [], patterns: [], onReview: ["Flag SQL injection"] },
-      { name: "Architect", role: null, rules: [], patterns: [], onReview: ["Check layer separation"] },
+      { name: "Security", version: null, role: null, rules: [], patterns: [], onReview: ["Flag SQL injection"] },
+      { name: "Architect", version: null, role: null, rules: [], patterns: [], onReview: ["Check layer separation"] },
     ];
 
     const files = gen.generate(makeCtx(profiles));
@@ -37,7 +40,7 @@ describe("HooksGenerator", () => {
 
   it("hook scripts are bash with shebang", () => {
     const profiles: ResolvedProfile[] = [
-      { name: "Security", role: null, rules: [], patterns: [], onReview: ["Flag issues"] },
+      { name: "Security", version: null, role: null, rules: [], patterns: [], onReview: ["Flag issues"] },
     ];
 
     const files = gen.generate(makeCtx(profiles));
@@ -46,9 +49,9 @@ describe("HooksGenerator", () => {
     expect(hook.content).toContain("Security profile ON_REVIEW");
   });
 
-  it("settings.json is valid JSON", () => {
+  it("settings.json is valid JSON with hooks and permissions", () => {
     const profiles: ResolvedProfile[] = [
-      { name: "Security", role: null, rules: [], patterns: [], onReview: ["check"] },
+      { name: "Security", version: null, role: null, rules: [], patterns: [], onReview: ["check"] },
     ];
 
     const files = gen.generate(makeCtx(profiles));
@@ -57,11 +60,14 @@ describe("HooksGenerator", () => {
     expect(parsed.hooks).toBeDefined();
     expect(parsed.hooks.PostToolUse).toBeInstanceOf(Array);
     expect(parsed.hooks.Stop).toBeInstanceOf(Array);
+    expect(parsed.permissions).toBeDefined();
+    expect(parsed.permissions.allow).toBeInstanceOf(Array);
+    expect(parsed.permissions.deny).toBeInstanceOf(Array);
   });
 
   it("settings.json references hook scripts", () => {
     const profiles: ResolvedProfile[] = [
-      { name: "Security", role: null, rules: [], patterns: [], onReview: ["check"] },
+      { name: "Security", version: null, role: null, rules: [], patterns: [], onReview: ["check"] },
     ];
 
     const files = gen.generate(makeCtx(profiles));
@@ -73,10 +79,54 @@ describe("HooksGenerator", () => {
 
   it("produces no files when no onReview rules", () => {
     const profiles: ResolvedProfile[] = [
-      { name: "Architect", role: null, rules: ["rule"], patterns: [], onReview: [] },
+      { name: "Architect", version: null, role: null, rules: ["rule"], patterns: [], onReview: [] },
     ];
 
     const files = gen.generate(makeCtx(profiles));
     expect(files).toHaveLength(0);
+  });
+
+  it("permissions include project-scoped write access", () => {
+    const profiles: ResolvedProfile[] = [
+      { name: "Security", version: null, role: null, rules: [], patterns: [], onReview: ["check"] },
+    ];
+
+    const files = gen.generate(makeCtx(profiles));
+    const parsed = JSON.parse(files.find(f => f.path === ".claude/settings.json")!.content);
+
+    expect(parsed.permissions.allow).toContain("Write(./test-app/**)");
+    expect(parsed.permissions.allow).toContain("Edit(./test-app/**)");
+    expect(parsed.permissions.allow).toContain("Read(./**)");
+  });
+
+  it("permissions deny dangerous operations", () => {
+    const profiles: ResolvedProfile[] = [
+      { name: "Security", version: null, role: null, rules: [], patterns: [], onReview: ["check"] },
+    ];
+
+    const files = gen.generate(makeCtx(profiles));
+    const parsed = JSON.parse(files.find(f => f.path === ".claude/settings.json")!.content);
+
+    expect(parsed.permissions.deny).toContain("Bash(rm -rf *)");
+    expect(parsed.permissions.deny).toContain("Write(./.env*)");
+  });
+
+  it("permissions include language-specific tool access", () => {
+    const profiles: ResolvedProfile[] = [
+      { name: "Security", version: null, role: null, rules: [], patterns: [], onReview: ["check"] },
+    ];
+    const blocks: CreateBlock[] = [
+      {
+        kind: "CreateBlock", componentType: "API", name: "svc",
+        properties: [{ kind: "LngProperty", value: "python", loc }],
+        members: [], loc,
+      },
+    ];
+
+    const files = gen.generate(makeCtx(profiles, blocks));
+    const parsed = JSON.parse(files.find(f => f.path === ".claude/settings.json")!.content);
+
+    expect(parsed.permissions.allow).toContain("Bash(pytest *)");
+    expect(parsed.permissions.allow).toContain("Bash(ruff check *)");
   });
 });

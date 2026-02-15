@@ -8,6 +8,7 @@ import { writeFiles } from "./codegen/writer.js";
 import { semanticValidate } from "./codegen/validator.js";
 import type { ValidationResult } from "./codegen/validator.js";
 import type { CompilationContext, GeneratedFile } from "./codegen/types.js";
+import type { IncrementalResult } from "./codegen/incremental.js";
 import type { Program, CreateBlock } from "./ast/nodes.js";
 import { boxTop, boxBottom, boxSep, boxLine, boxEmpty, checkMark, warnMark } from "./cli/format.js";
 
@@ -223,7 +224,8 @@ function printRichPlan(ctx: CompilationContext, validation: ValidationResult): v
 function compile(filePath: string): number {
   try {
     const compiler = new Compiler();
-    const { files, context } = compiler.compile(filePath);
+    const compileResult = compiler.compile(filePath);
+    const { files, context } = compileResult;
     const outputDir = context.projectName;
 
     writeFiles(outputDir, files);
@@ -240,10 +242,36 @@ function compile(filePath: string): number {
     console.log(`\n  Total: ${files.length} files generated`);
     console.log(`\n  Output: ${outputDir}/`);
 
+    // Show incremental info
+    if (compileResult.incremental) {
+      printIncrementalInfo(compileResult.incremental);
+    }
+
     return 0;
   } catch (err) {
     console.error(`Compile error: ${err instanceof Error ? err.message : err}`);
     return 1;
+  }
+}
+
+function printIncrementalInfo(inc: IncrementalResult): void {
+  const hasChanges = inc.changed.length > 0 || inc.added.length > 0 || inc.removed.length > 0;
+  if (!hasChanges && inc.unchanged.length > 0) {
+    console.log(`\n  Incremental: all ${inc.unchanged.length} component(s) unchanged`);
+    return;
+  }
+
+  if (inc.added.length > 0) {
+    console.log(`\n  New: ${inc.added.join(", ")}`);
+  }
+  if (inc.changed.length > 0) {
+    console.log(`  Changed: ${inc.changed.join(", ")}`);
+  }
+  if (inc.unchanged.length > 0) {
+    console.log(`  Unchanged: ${inc.unchanged.join(", ")}`);
+  }
+  if (inc.removed.length > 0) {
+    console.log(`  Removed: ${inc.removed.join(", ")}`);
   }
 }
 
@@ -274,11 +302,13 @@ function apply(filePath: string, gateOverride: string | null): number {
   // Step 2: Compile
   let files: GeneratedFile[];
   let context: CompilationContext;
+  let incremental: IncrementalResult | null = null;
   try {
     const compiler = new Compiler();
     const result = compiler.compile(filePath);
     files = result.files;
     context = result.context;
+    incremental = result.incremental;
   } catch (err) {
     console.error(`Compile error: ${err instanceof Error ? err.message : err}`);
     return 1;

@@ -18,10 +18,13 @@ import { OrchestrateGenerator } from "./generators/orchestrate.js";
 import { StateGenerator } from "./generators/state.js";
 import { LngRulesGenerator } from "./generators/lng-rules.js";
 import { PlanSkillGenerator } from "./generators/plan-skill.js";
+import { loadPreviousState, computeIncremental } from "./incremental.js";
+import type { IncrementalResult } from "./incremental.js";
 
 export interface CompileResult {
   files: GeneratedFile[];
   context: CompilationContext;
+  incremental: IncrementalResult | null;
 }
 
 export class Compiler {
@@ -68,13 +71,17 @@ export class Compiler {
     // Build context
     const ctx = this.buildContext(ast, filePath);
 
+    // Incremental check
+    const prevState = loadPreviousState(ctx.projectName);
+    const incremental = computeIncremental(ctx.createBlocks, prevState);
+
     // Generate
     const files: GeneratedFile[] = [];
     for (const gen of this.generators) {
       files.push(...gen.generate(ctx));
     }
 
-    return { files, context: ctx };
+    return { files, context: ctx, incremental };
   }
 
   private buildContext(ast: Program, filePath: string): CompilationContext {

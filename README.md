@@ -121,25 +121,28 @@ src/
 │   └── diagnostics.ts    ← Error formatting
 ├── cli/
 │   └── format.ts         ← Box-style CLI formatting utilities
-└── codegen/              ← Phase 2: Code generation + Phase 3: Validation
+└── codegen/
     ├── types.ts          ← GeneratedFile, CompilationContext
     ├── generator.ts      ← Generator interface
     ├── import-resolver.ts ← Parse FROM files, flatten EXTENDS
     ├── dependency-graph.ts ← DAG, topological sort, cycle detection
     ├── compiler.ts       ← Pipeline orchestrator
     ├── validator.ts      ← Semantic validation (DEPENDS, cycles, imports)
+    ├── checksum.ts       ← SHA-256 checksums for state tracking
+    ├── incremental.ts    ← Incremental compilation (diff vs previous state)
+    ├── reference-scanner.ts ← REFERENCE codebase scanning + detection
     ├── writer.ts         ← Filesystem writer (only fs-touching module)
     ├── builtin-profiles.ts ← Architect, Security, QA, DevOps
     └── generators/       ← One generator per artifact type
-        ├── claude-md.ts
+        ├── claude-md.ts  ← (includes REFERENCE scan injection)
         ├── create-skill.ts
         ├── update-skill.ts
         ├── agent.ts
         ├── rules.ts
         ├── lng-rules.ts
-        ├── hooks.ts
+        ├── hooks.ts      ← (includes permissions.allow/deny)
         ├── orchestrate.ts
-        ├── state.ts
+        ├── state.ts      ← (includes checksums, paths, methods)
         └── plan-skill.ts
 ```
 
@@ -159,6 +162,8 @@ src/
 | Phase 1 | ✅ Complete | Lexer + Parser + AST + CLI (`validate`, `plan`) |
 | Phase 2 | ✅ Complete | Code generation — all generators, 19 output files, 121 tests |
 | Phase 3 | ✅ Complete | Human-in-the-loop — semantic validation, rich plan, compile with line counts, apply with phase gates (139 tests) |
+| Phase 4 | ✅ Complete | REFERENCE scanning, permissions, checksums, incremental compilation (165 tests) |
+| Phase 5 | ⏳ Pending | Drift detection, resume from partial, deep profile conflicts, smart ON_REVIEW |
 
 ### Running Tests
 

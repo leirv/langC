@@ -1,5 +1,6 @@
 import type { Generator } from "../generator.js";
 import type { GeneratedFile, CompilationContext } from "../types.js";
+import { scanReference, formatReferenceScanMd } from "../reference-scanner.js";
 
 export class ClaudeMdGenerator implements Generator {
   name = "claude-md";
@@ -15,12 +16,17 @@ export class ClaudeMdGenerator implements Generator {
     lines.push(scopeDescription(ctx.scope));
     lines.push("");
 
-    // Reference
+    // Reference — scan if path provided
     if (ctx.reference !== "none") {
-      lines.push("## Reference Codebase");
-      lines.push(`This project extends an existing codebase at \`${ctx.reference}\`.`);
-      lines.push("When generating code, match the existing patterns, naming conventions, and project structure.");
-      lines.push("");
+      const scan = scanReference(ctx.reference);
+      if (scan) {
+        lines.push(formatReferenceScanMd(scan));
+      } else {
+        lines.push("## Reference Codebase");
+        lines.push(`This project extends an existing codebase at \`${ctx.reference}\`.`);
+        lines.push(`> **Warning**: Reference path \`${ctx.reference}\` could not be scanned.`);
+        lines.push("");
+      }
     }
 
     // Architecture overview
