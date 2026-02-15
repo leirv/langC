@@ -28,6 +28,7 @@ export const keywords: Record<string, TokenType> = {
   ON_REVIEW: TokenType.ON_REVIEW,
   EXTENDS: TokenType.EXTENDS,
   EXCEPT: TokenType.EXCEPT,
+  GATE: TokenType.GATE,
   PUBLIC: TokenType.PUBLIC,
   GET: TokenType.GET,
   POST: TokenType.POST,

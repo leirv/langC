@@ -41,7 +41,7 @@ function generateStateJson(ctx: CompilationContext): string {
     compiled_at: new Date().toISOString(),
     scope: ctx.scope,
     profiles_used: Object.fromEntries(
-      ctx.profiles.map(p => [p.name, "v1"]),
+      ctx.profiles.map(p => [p.name, p.version ?? "v1"]),
     ),
     components,
   };

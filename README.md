@@ -147,9 +147,8 @@ src/
 | Phase | Status | Description |
 |-------|--------|-------------|
 | Phase 1 | ✅ Complete | Lexer + Parser + AST + CLI (`validate`, `plan`) |
-| Phase 2a | ✅ Complete | Import resolution + core generators (`compile`) |
-| Phase 2b | ✅ Complete | Profile generators (agents, rules, hooks) |
-| Phase 2c | ✅ Complete | Orchestration + state management |
+| Phase 2 | ✅ Complete | Code generation — all generators, 19 output files, 121 tests |
+| Phase 3 | ⏳ Pending | Human-in-the-loop (semantic validate, rich plan, apply with gates) |
 
 ### Running Tests
 
@@ -172,6 +171,7 @@ npm run langc -- plan examples/test-app.langc
 | `IMPORT Name FROM "path"` | Import a profile from another file |
 | `PROJECT "name" { ... }` | Define a project with components |
 | `SCOPE = full\|skeleton\|prototype` | Build scope (how complete) |
+| `GATE = phase-by-phase\|manual\|auto` | Human approval gate mode |
 | `REFERENCE = "./path"\|none` | Existing codebase to match |
 | `PROFILES = [A, B]` | Expert profiles governing generation |
 | `CREATE DB\|API\|WEBUI\|FNC "name"` | Create a component |

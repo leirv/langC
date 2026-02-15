@@ -1,6 +1,45 @@
 import type { Generator } from "../generator.js";
 import type { GeneratedFile, CompilationContext, ResolvedProfile } from "../types.js";
 
+/** Maps common ON_REVIEW rule keywords to grep patterns. */
+const rulePatterns: { keyword: string; pattern: string; message: string }[] = [
+  {
+    keyword: "raw sql",
+    pattern: '(f".*SELECT|f".*INSERT|f".*UPDATE|f".*DELETE|\\+.*SELECT|\\+.*INSERT)',
+    message: "Possible raw SQL string construction detected",
+  },
+  {
+    keyword: "sql string",
+    pattern: '(f".*SELECT|f".*INSERT|f".*UPDATE|f".*DELETE|\\+.*SELECT|\\+.*INSERT)',
+    message: "Possible SQL string concatenation detected",
+  },
+  {
+    keyword: "stack trace",
+    pattern: "(traceback\\.print|print_exc|e\\.stackTrace|console\\.error\\(err)",
+    message: "Possible stack trace exposure detected",
+  },
+  {
+    keyword: "hardcoded",
+    pattern: '(password\\s*=\\s*"|api_key\\s*=\\s*"|secret\\s*=\\s*")',
+    message: "Possible hardcoded credential detected",
+  },
+  {
+    keyword: "credential",
+    pattern: '(password\\s*=\\s*"|api_key\\s*=\\s*"|secret\\s*=\\s*")',
+    message: "Possible hardcoded credential detected",
+  },
+  {
+    keyword: "port",
+    pattern: '(:[0-9]{4,5}[^0-9]|localhost:[0-9])',
+    message: "Possible hardcoded port or URL detected",
+  },
+  {
+    keyword: "exceeds 300 lines",
+    pattern: "",  // special case: line count check
+    message: "File exceeds 300 lines",
+  },
+];
+
 export class HooksGenerator implements Generator {
   name = "hooks";
 
@@ -41,11 +80,45 @@ function generateHookScript(profile: ResolvedProfile): string {
   lines.push("fi");
   lines.push("");
 
-  // Generate grep checks based on review rules
   for (const rule of profile.onReview) {
     lines.push(`# ${rule}`);
+
+    // Try to match a grep pattern for this rule
+    const ruleLower = rule.toLowerCase();
+    let matched = false;
+
+    // Special case: line count check
+    if (ruleLower.includes("exceeds") && ruleLower.includes("lines")) {
+      const limitMatch = ruleLower.match(/(\d+)\s*lines/);
+      const limit = limitMatch ? limitMatch[1] : "300";
+      lines.push(`LINE_COUNT=$(wc -l < "$FILE" 2>/dev/null || echo 0)`);
+      lines.push(`if [ "$LINE_COUNT" -gt ${limit} ]; then`);
+      lines.push(`  echo "⚠ ${name}: File $FILE has $LINE_COUNT lines (limit: ${limit})" >&2`);
+      lines.push("fi");
+      lines.push("");
+      matched = true;
+    }
+
+    if (!matched) {
+      for (const rp of rulePatterns) {
+        if (rp.pattern && ruleLower.includes(rp.keyword)) {
+          lines.push(`if grep -qE "${rp.pattern}" "$FILE" 2>/dev/null; then`);
+          lines.push(`  echo "⚠ ${name}: ${rp.message} in $FILE" >&2`);
+          lines.push(`  echo "  ${rule}" >&2`);
+          lines.push("fi");
+          lines.push("");
+          matched = true;
+          break;
+        }
+      }
+    }
+
+    if (!matched) {
+      // No pattern match — leave as comment-only
+      lines.push("");
+    }
   }
-  lines.push("");
+
   lines.push("exit 0");
   lines.push("");
 

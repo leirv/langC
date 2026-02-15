@@ -3,10 +3,11 @@ import { resolve, dirname } from "node:path";
 import { Lexer } from "../lexer/lexer.js";
 import { Parser } from "../parser/parser.js";
 import type { Program, ProjectDecl, ProfileDecl, ProfileRef, CreateBlock, UpdateBlock } from "../ast/nodes.js";
-import type { CompilationContext, GeneratedFile } from "./types.js";
+import type { CompilationContext, GeneratedFile, ResolvedProfile } from "./types.js";
 import type { Generator } from "./generator.js";
 import { resolveImports } from "./import-resolver.js";
 import { buildDependencyGraph } from "./dependency-graph.js";
+import { builtinProfiles } from "./builtin-profiles.js";
 import { ClaudeMdGenerator } from "./generators/claude-md.js";
 import { CreateSkillGenerator } from "./generators/create-skill.js";
 import { UpdateSkillGenerator } from "./generators/update-skill.js";
@@ -15,6 +16,8 @@ import { RulesGenerator } from "./generators/rules.js";
 import { HooksGenerator } from "./generators/hooks.js";
 import { OrchestrateGenerator } from "./generators/orchestrate.js";
 import { StateGenerator } from "./generators/state.js";
+import { LngRulesGenerator } from "./generators/lng-rules.js";
+import { PlanSkillGenerator } from "./generators/plan-skill.js";
 
 export interface CompileResult {
   files: GeneratedFile[];
@@ -32,10 +35,12 @@ export class Compiler {
     // Phase 2b generators
     this.generators.push(new AgentGenerator());
     this.generators.push(new RulesGenerator());
+    this.generators.push(new LngRulesGenerator());
     this.generators.push(new HooksGenerator());
     // Phase 2c generators
     this.generators.push(new OrchestrateGenerator());
     this.generators.push(new StateGenerator());
+    this.generators.push(new PlanSkillGenerator());
   }
 
   addGenerator(gen: Generator): void {
@@ -84,6 +89,7 @@ export class Compiler {
     // Extract project properties
     const scope = this.getProjectProp(project, "ScopeProperty") ?? "full";
     const reference = this.getProjectProp(project, "ReferenceProperty") ?? "none";
+    const gate = this.getProjectProp(project, "GateProperty") ?? "phase-by-phase";
 
     // Get profile refs
     const profilesProp = project.properties.find(p => p.kind === "ProfilesProperty");
@@ -124,6 +130,11 @@ export class Compiler {
       else if (block.kind === "UpdateBlock") updateBlocks.push(block);
     }
 
+    // Resolve block-scoped PROFILES +=
+    const blockProfiles = this.resolveBlockProfiles(
+      createBlocks, ast, inlineProfiles, fileReader, filePath,
+    );
+
     // Build dependency graph
     const dependencyGraph = buildDependencyGraph(createBlocks);
 
@@ -131,14 +142,49 @@ export class Compiler {
       projectName: project.name,
       scope,
       reference,
+      gate,
       profiles,
       profileExcepts,
+      blockProfiles,
       createBlocks,
       updateBlocks,
       dependencyGraph,
       ast,
       project,
     };
+  }
+
+  private resolveBlockProfiles(
+    blocks: CreateBlock[],
+    ast: Program,
+    inlineProfiles: ProfileDecl[],
+    fileReader: (path: string) => string,
+    filePath: string,
+  ): Map<string, ResolvedProfile[]> {
+    const result = new Map<string, ResolvedProfile[]>();
+
+    for (const block of blocks) {
+      const blockId = `${block.componentType}.${block.name}`;
+      const addProps = block.properties.filter(p => p.kind === "ProfilesAddProperty");
+
+      if (addProps.length === 0) continue;
+
+      const refs: ProfileRef[] = [];
+      for (const prop of addProps) {
+        if (prop.kind === "ProfilesAddProperty") {
+          refs.push(...prop.names);
+        }
+      }
+
+      if (refs.length > 0) {
+        const resolved = resolveImports(
+          ast.imports, inlineProfiles, refs, fileReader, filePath,
+        );
+        result.set(blockId, resolved);
+      }
+    }
+
+    return result;
   }
 
   private getProjectProp(project: ProjectDecl, kind: string): string | null {

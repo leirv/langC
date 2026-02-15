@@ -2,7 +2,7 @@ import { Token, TokenType, Loc } from "../lexer/tokens.js";
 import { ParseErrorCollector, ParseError } from "./errors.js";
 import {
   Program, ImportDecl, Declaration, ProjectDecl, ProfileDecl,
-  ProjectProperty, ScopeProperty, ReferenceProperty, ProfilesProperty,
+  ProjectProperty, ScopeProperty, ReferenceProperty, ProfilesProperty, GateProperty,
   ProfileRef, Block, CreateBlock, UpdateBlock,
   ComponentType, ComponentProperty, ComponentMember,
   LngProperty, FrameworkProperty, DependsProperty, ProfilesAddProperty,
@@ -100,6 +100,9 @@ export class Parser {
       if (this.check(TokenType.SCOPE)) {
         const prop = this.parseScopeProperty();
         if (prop) properties.push(prop);
+      } else if (this.check(TokenType.GATE)) {
+        const prop = this.parseGateProperty();
+        if (prop) properties.push(prop);
       } else if (this.check(TokenType.REFERENCE)) {
         const prop = this.parseReferenceProperty();
         if (prop) properties.push(prop);
@@ -132,6 +135,16 @@ export class Parser {
     if (!value) return null;
     this.optionalComma();
     return { kind: "ScopeProperty", value, loc };
+  }
+
+  private parseGateProperty(): GateProperty | null {
+    const loc = this.loc();
+    this.advance(); // GATE
+    this.consume(TokenType.Equals, "Expected '=' after GATE");
+    const value = this.consumeIdentifierOrKeyword("Expected gate mode value");
+    if (!value) return null;
+    this.optionalComma();
+    return { kind: "GateProperty", value, loc };
   }
 
   private parseReferenceProperty(): ReferenceProperty | null {
@@ -669,6 +682,7 @@ export class Parser {
       TokenType.LNG, TokenType.FRAMEWORK, TokenType.SCOPE, TokenType.REFERENCE,
       TokenType.DEPENDS, TokenType.PROFILES, TokenType.ROLE, TokenType.RULES,
       TokenType.PATTERNS, TokenType.ON_REVIEW, TokenType.EXTENDS, TokenType.EXCEPT,
+      TokenType.GATE,
       TokenType.PUBLIC, TokenType.GET, TokenType.POST, TokenType.PUT,
       TokenType.DELETE, TokenType.PATCH,
       TokenType.None, TokenType.Full, TokenType.Skeleton, TokenType.Prototype,

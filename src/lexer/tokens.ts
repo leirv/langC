@@ -41,6 +41,8 @@ export enum TokenType {
   DELETE = "DELETE",
   PATCH = "PATCH",
 
+  GATE = "GATE",
+
   // Special identifiers
   None = "none",
   Full = "full",

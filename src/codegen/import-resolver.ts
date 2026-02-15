@@ -2,6 +2,7 @@ import { Lexer } from "../lexer/lexer.js";
 import { Parser } from "../parser/parser.js";
 import type { ImportDecl, ProfileDecl, ProfileRef } from "../ast/nodes.js";
 import type { ResolvedProfile } from "./types.js";
+import { builtinProfiles } from "./builtin-profiles.js";
 
 export type FileReader = (path: string) => string;
 
@@ -19,12 +20,18 @@ export function resolveImports(
   // Build a map of all available profiles
   const profileMap = new Map<string, ProfileDecl>();
 
+  // Build version map from imports
+  const versionMap = new Map<string, string | null>();
+  for (const imp of imports) {
+    versionMap.set(imp.name, imp.version);
+  }
+
   // Add inline profiles first
   for (const p of inlineProfiles) {
     profileMap.set(p.name, p);
   }
 
-  // Resolve imports from files
+  // Resolve imports from files or built-in profiles
   for (const imp of imports) {
     if (imp.from) {
       const resolvedPath = resolvePath(basePath, imp.from);
@@ -32,13 +39,13 @@ export function resolveImports(
       if (profile) {
         profileMap.set(imp.name, profile);
       }
+    } else {
+      // No FROM path — look up built-in profiles
+      const builtin = builtinProfiles.get(imp.name);
+      if (builtin) {
+        profileMap.set(imp.name, builtin);
+      }
     }
-  }
-
-  // Build except map from profile refs
-  const exceptMap = new Map<string, string | null>();
-  for (const ref of profileRefs) {
-    exceptMap.set(ref.name, ref.except);
   }
 
   // Resolve EXTENDS chains and flatten
@@ -49,6 +56,8 @@ export function resolveImports(
 
     const flat = flattenProfile(profile, profileMap, new Set());
     const filtered = applyExcept(flat, ref.except);
+    // Attach version from import
+    filtered.version = versionMap.get(ref.name) ?? null;
     resolved.push(filtered);
   }
 
@@ -95,6 +104,7 @@ function flattenProfile(
     // Cycle detected — return what we have
     return {
       name: profile.name,
+      version: null,
       role: profile.role,
       rules: [...profile.rules],
       patterns: profile.patterns.map(p => ({
@@ -110,6 +120,7 @@ function flattenProfile(
   // Start with this profile's own data
   const result: ResolvedProfile = {
     name: profile.name,
+    version: null,
     role: profile.role,
     rules: [],
     patterns: [],

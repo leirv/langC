@@ -14,6 +14,7 @@ export interface GeneratedFile {
 
 export interface ResolvedProfile {
   name: string;
+  version: string | null;
   role: string | null;
   rules: string[];
   patterns: { componentType: string; pattern: string }[];
@@ -41,8 +42,10 @@ export interface CompilationContext {
   projectName: string;
   scope: string;
   reference: string;
+  gate: string;              // manual | phase-by-phase | auto | confirm-on-warning
   profiles: ResolvedProfile[];
   profileExcepts: Map<string, string | null>; // profile name -> except rule
+  blockProfiles: Map<string, ResolvedProfile[]>; // block id -> additional profiles
   createBlocks: CreateBlock[];
   updateBlocks: UpdateBlock[];
   dependencyGraph: DependencyGraph;

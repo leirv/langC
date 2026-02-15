@@ -31,7 +31,7 @@ export interface ProjectDecl {
   loc: Loc;
 }
 
-export type ProjectProperty = ScopeProperty | ReferenceProperty | ProfilesProperty;
+export type ProjectProperty = ScopeProperty | ReferenceProperty | ProfilesProperty | GateProperty;
 
 export interface ScopeProperty {
   kind: "ScopeProperty";
@@ -48,6 +48,12 @@ export interface ReferenceProperty {
 export interface ProfilesProperty {
   kind: "ProfilesProperty";
   names: ProfileRef[];
+  loc: Loc;
+}
+
+export interface GateProperty {
+  kind: "GateProperty";
+  value: string; // manual | phase-by-phase | auto | confirm-on-warning
   loc: Loc;
 }
 

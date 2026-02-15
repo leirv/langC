@@ -36,6 +36,14 @@ describe("E2E compilation", () => {
 
     // Memory
     expect(paths).toContain(".claude/agent-memory/langc/MEMORY.md");
+
+    // LNG rules
+    expect(paths).toContain(".claude/rules/postgresql.md");
+    expect(paths).toContain(".claude/rules/python.md");
+    expect(paths).toContain(".claude/rules/react.md");
+
+    // Plan skill
+    expect(paths).toContain(".claude/skills/plan/SKILL.md");
   });
 
   it("CLAUDE.md contains correct dependency order", () => {
