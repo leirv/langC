@@ -1,75 +1,190 @@
-# LangC — A Transpiler for Claude Orchestration
+# LangC — A DSL Transpiler for Claude Orchestration
 
-## Vision
+LangC compiles structured `.langc` files into complete `.claude/` directory trees — subagent definitions, skills, rules, hooks, and orchestration plans that Claude can execute autonomously.
 
-LangC is a Domain-Specific Language (DSL) that transpiles structured, concise instructions into Claude orchestration plans. Instead of writing unstructured natural language prompts, users write in a deterministic, parseable syntax that compiles into optimized Claude commands — achieving better context management, prompt management, and repeatable outputs.
+## Why LangC?
+
+Instead of writing hundreds of lines of unstructured prompts, write 30 lines of LangC:
+
+```langc
+IMPORT Architect FROM "./profiles/architect.langc"
+IMPORT Security FROM "./profiles/security.langc"
+
+PROJECT "test-app" {
+    SCOPE = full,
+    REFERENCE = none,
+    PROFILES = [Architect, Security],
+
+    CREATE DB "users-db" {
+        LNG = postgresql,
+        DEPENDS = none,
+        TABLE "users" {
+            id: int -> "primary key, auto increment",
+            name: string -> "required, max 100 chars",
+            email: string -> "required, unique",
+            created_at: datetime -> "auto-set on creation"
+        }
+    },
+
+    CREATE API "users" {
+        LNG = python,
+        FRAMEWORK = fastapi,
+        DEPENDS = [DB.users-db],
+        METHOD GET    "/users"      -> "list all users with pagination",
+        METHOD POST   "/users"      -> "create a user with name, email",
+        METHOD GET    "/users/{id}" -> "get user by id",
+        METHOD PUT    "/users/{id}" -> "update user name or email",
+        METHOD DELETE "/users/{id}" -> "delete user by id"
+    },
+
+    CREATE WEBUI "users-display" {
+        LNG = React,
+        FRAMEWORK = nextjs,
+        DEPENDS = [API.users],
+        DISPLAY API.users.GET("/users")      -> "Table with all users, paginated",
+        DISPLAY API.users.POST("/users")     -> "Form to create a new user",
+        DISPLAY API.users.GET("/users/{id}") -> "Search bar to find user by id"
+    }
+}
+```
+
+The transpiler produces a fully configured `.claude/` directory:
+
+```
+test-app/
+├── CLAUDE.md                          ← Project context, rules, build order
+├── .langc/state.json                  ← Build state tracking
+└── .claude/
+    ├── settings.json                  ← Review hooks + permissions
+    ├── agents/                        ← PROFILE → subagent definitions
+    │   ├── architect.md
+    │   └── security.md
+    ├── skills/                        ← CREATE/UPDATE → executable skills
+    │   ├── build-db-users-db/SKILL.md
+    │   ├── build-api-users/SKILL.md
+    │   ├── build-webui-users-display/SKILL.md
+    │   └── orchestrate/SKILL.md       ← Dependency-ordered build plan
+    ├── rules/                         ← PATTERNS → path-specific rules
+    │   ├── api.md
+    │   ├── webui.md
+    │   └── db.md
+    ├── hooks/                         ← ON_REVIEW → automated guardrails
+    │   ├── review-architect.sh
+    │   └── review-security.sh
+    └── agent-memory/langc/MEMORY.md   ← Build summary for Claude
+```
+
+## Installation
+
+```bash
+npm install
+npm run build
+```
+
+## CLI Commands
+
+```bash
+# Validate syntax
+langc validate examples/test-app.langc
+
+# Preview AST summary
+langc plan examples/test-app.langc
+
+# Compile to .claude/ artifacts
+langc compile examples/test-app.langc
+```
 
 ## Architecture
 
 ```
-[Your DSL]  -->  [Transpiler]  -->  [Claude Orchestration Plan]  -->  [Claude Executes]
-     ^                                        ^
-  Human writes                     CLAUDE.md / tasks / sub-agents
+.langc source → Lexer → Parser → AST → Code Generators → .claude/ directory
 ```
 
-The transpiler does not produce application code directly. It produces a **plan** — structured instructions (CLAUDE.md files, sub-agent definitions, team tasks, skills, commands) that Claude follows to build the final application.
-
-## Core Concepts
-
-| Concept | Purpose |
-|---------|---------|
-| **ACT** | Actions/verbs — what to do (Create, Update) |
-| **TYPE** | Targets/nouns — what to act on (API, METHOD, FNC) |
-| **LNG** | Language constraint — restricts Claude's output language |
-| **INST** | Instructions — combines actions + targets into executable commands |
-| **CMD** | Commands — the concrete operations within instructions |
-
-## Example (Early Pseudocode)
+### Source Layout
 
 ```
-ACT {
-    Create
-    Update
-}
-
-TYPE {
-    API,
-    METHOD,
-    FNC
-}
-
-LNG = python
-
-INST {
-    CMD {
-        [TYPE]
-    }
-}
-
-INST = CMD.CREATE(TYPE.FNC, TYPE.METHOD)
+src/
+├── index.ts              ← CLI entry point
+├── ast/nodes.ts          ← AST type definitions
+├── lexer/
+│   ├── lexer.ts          ← Tokenizer
+│   ├── tokens.ts         ← Token types
+│   └── keywords.ts       ← Keyword table
+├── parser/
+│   ├── parser.ts         ← Recursive descent parser
+│   └── errors.ts         ← Parse error collector
+├── errors/
+│   └── diagnostics.ts    ← Error formatting
+└── codegen/              ← Phase 2: Code generation
+    ├── types.ts          ← GeneratedFile, CompilationContext
+    ├── generator.ts      ← Generator interface
+    ├── import-resolver.ts ← Parse FROM files, flatten EXTENDS
+    ├── dependency-graph.ts ← DAG, topological sort, cycle detection
+    ├── compiler.ts       ← Pipeline orchestrator
+    ├── writer.ts         ← Filesystem writer (only fs-touching module)
+    └── generators/       ← One generator per artifact type
+        ├── claude-md.ts
+        ├── create-skill.ts
+        ├── update-skill.ts
+        ├── agent.ts
+        ├── rules.ts
+        ├── hooks.ts
+        ├── orchestrate.ts
+        └── state.ts
 ```
-
-## Expected Outcome
-
-When the transpiler processes a `.langc` file, it produces:
-- A structured set of instructions for a CLAUDE.md file
-- Sub-agent definitions and team task assignments
-- Skills and commands for Claude to follow
 
 ## Design Principles
 
-1. **Verbs + Nouns + Context** — Actions are separated from targets, with enough context for Claude to act
-2. **Conciseness over verbosity** — 10x shorter than equivalent natural language prompts
-3. **Deterministic output** — Same input always produces the same orchestration plan
-4. **Iterative** — Support for updating and modifying existing structures, not just creating new ones
+1. **Verbs + Nouns + Context** — `CREATE API "users" { METHOD GET "/users" -> "..." }`
+2. **10x more concise** than equivalent natural language prompts
+3. **Deterministic** — same input always produces the same output
+4. **Iterative** — `UPDATE API.users { ADD METHOD ... }` modifies existing components
+5. **Generators never touch filesystem** — return `GeneratedFile[]`, testable by array assertions
+6. **Pipeline is additive** — each phase appends generators, never modifies existing ones
 
-## Open Design Questions
+## Development
 
-- **Granularity**: Is one DSL file = one project? One feature? One task?
-- **Context**: How does the user provide descriptions and business logic? Pure DSL or DSL + natural language blocks?
-- **Output format**: Is the target literally a CLAUDE.md file? A sequence of prompts? A task list?
-- **Iteration**: Can the user say `UPDATE FNC "auth"` later and have it modify existing code?
+| Phase | Status | Description |
+|-------|--------|-------------|
+| Phase 1 | ✅ Complete | Lexer + Parser + AST + CLI (`validate`, `plan`) |
+| Phase 2a | ✅ Complete | Import resolution + core generators (`compile`) |
+| Phase 2b | ✅ Complete | Profile generators (agents, rules, hooks) |
+| Phase 2c | ✅ Complete | Orchestration + state management |
 
-## References
+### Running Tests
 
-- [Superpower (parser combinator library)](https://github.com/datalust/superpower) — Reference for tokenizer/parser architecture
+```bash
+npm test              # Run all tests
+npm run test:watch    # Watch mode
+```
+
+### Development Mode
+
+```bash
+npm run langc -- validate examples/test-app.langc
+npm run langc -- plan examples/test-app.langc
+```
+
+## Language Reference
+
+| Construct | Purpose |
+|-----------|---------|
+| `IMPORT Name FROM "path"` | Import a profile from another file |
+| `PROJECT "name" { ... }` | Define a project with components |
+| `SCOPE = full\|skeleton\|prototype` | Build scope (how complete) |
+| `REFERENCE = "./path"\|none` | Existing codebase to match |
+| `PROFILES = [A, B]` | Expert profiles governing generation |
+| `CREATE DB\|API\|WEBUI\|FNC "name"` | Create a component |
+| `UPDATE TYPE.name { ... }` | Modify an existing component |
+| `LNG = python` | Language constraint |
+| `FRAMEWORK = fastapi` | Framework constraint |
+| `DEPENDS = [TYPE.name]` | Dependency declaration |
+| `METHOD GET "/path" -> "desc"` | API endpoint |
+| `PUBLIC METHOD ...` | Unauthenticated endpoint |
+| `DISPLAY API.ref -> "desc"` | UI view linked to API |
+| `TABLE "name" { col: type }` | Database table schema |
+| `PROFILE Name { ROLE, RULES, PATTERNS, ON_REVIEW }` | Expert profile definition |
+
+## License
+
+MIT

@@ -1,8 +1,10 @@
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve, basename } from "node:path";
 import { Lexer } from "./lexer/lexer.js";
 import { Parser } from "./parser/parser.js";
 import { formatDiagnostics, printDiagnostics } from "./errors/diagnostics.js";
+import { Compiler } from "./codegen/compiler.js";
+import { writeFiles } from "./codegen/writer.js";
 
 function usage(): void {
   console.log(`Usage: langc <command> <file>
@@ -83,6 +85,39 @@ function plan(filePath: string): number {
   return 0;
 }
 
+function compile(filePath: string): number {
+  try {
+    const compiler = new Compiler();
+    const { files, context } = compiler.compile(filePath);
+    const outputDir = context.projectName;
+
+    writeFiles(outputDir, files);
+
+    console.log(`Compiled ${filePath} → ${outputDir}/`);
+    console.log(`\n  ${files.length} files generated:`);
+    // Group by directory for tree display
+    const byDir = new Map<string, string[]>();
+    for (const f of files) {
+      const parts = f.path.split("/");
+      const fileName = parts.pop()!;
+      const dir = parts.join("/") || ".";
+      if (!byDir.has(dir)) byDir.set(dir, []);
+      byDir.get(dir)!.push(fileName);
+    }
+    for (const [dir, fileNames] of byDir) {
+      console.log(`    ${dir}/`);
+      for (const name of fileNames) {
+        console.log(`      ${name}`);
+      }
+    }
+
+    return 0;
+  } catch (err) {
+    console.error(`Compile error: ${err instanceof Error ? err.message : err}`);
+    return 1;
+  }
+}
+
 function main(): void {
   const args = process.argv.slice(2);
 
@@ -107,9 +142,8 @@ function main(): void {
 
     case "compile":
     case "apply":
-      console.log(`'${command}' requires Phase 2 (code generation) — not yet implemented.`);
-      console.log("Phase 1 provides: validate, plan");
-      process.exit(0);
+      if (!file) { console.error("Error: missing file argument"); process.exit(1); }
+      process.exit(compile(file));
       break;
 
     default:
