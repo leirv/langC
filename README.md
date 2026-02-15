@@ -81,6 +81,283 @@ npm install
 npm run build
 ```
 
+## Getting Started
+
+### Step 1: Write a `.langc` file
+
+Create a file called `my-app.langc`:
+
+```langc
+IMPORT Architect
+IMPORT Security
+
+PROJECT "my-app" {
+    SCOPE = full,
+    PROFILES = [Architect, Security],
+
+    CREATE DB "main-db" {
+        LNG = postgresql,
+        DEPENDS = none,
+        TABLE "users" {
+            id: int -> "primary key, auto increment",
+            email: string -> "required, unique",
+            name: string -> "required, max 100 chars"
+        }
+    },
+
+    CREATE API "backend" {
+        LNG = python,
+        FRAMEWORK = fastapi,
+        DEPENDS = [DB.main-db],
+        METHOD GET  "/users"      -> "list all users with pagination",
+        METHOD POST "/users"      -> "create a user with email and name",
+        METHOD GET  "/users/{id}" -> "get user by id"
+    },
+
+    CREATE WEBUI "frontend" {
+        LNG = React,
+        FRAMEWORK = nextjs,
+        DEPENDS = [API.backend],
+        DISPLAY API.backend.GET("/users")     -> "Table showing all users",
+        DISPLAY API.backend.POST("/users")    -> "Form to create a new user"
+    }
+}
+```
+
+### Step 2: Validate
+
+Check for syntax errors, broken dependencies, circular references, and profile conflicts:
+
+```bash
+langc validate my-app.langc
+```
+
+Output:
+
+```
+╔═══════════════════════════════════════════════════════╗
+║                                                       ║
+║  ✅ Syntax valid                                      ║
+║  ✅ All DEPENDS references resolve                    ║
+║  ✅ No circular dependencies                          ║
+║  ✅ All IMPORT profiles found                         ║
+║  ✅ No profile conflicts                              ║
+║  ✅ ON_REVIEW evaluation                              ║
+║                                                       ║
+║  All checks passed. Ready to plan.                    ║
+╚═══════════════════════════════════════════════════════╝
+```
+
+### Step 3: Plan
+
+See the full build plan with dependency phases, profile reviews, and gate strategy:
+
+```bash
+langc plan my-app.langc
+```
+
+This shows which components build in which order (DB first, then API, then WEBUI), what each profile will check during review, and the gate mode controlling human approval.
+
+### Step 4: Compile
+
+Generate the complete `.claude/` directory tree:
+
+```bash
+langc compile my-app.langc
+```
+
+Output:
+
+```
+Generated .claude/ artifacts:
+  CLAUDE.md                                        (45 lines)
+  .langc/state.json                                (62 lines)
+  .claude/settings.json                            (28 lines)
+  .claude/agents/architect.md                      (22 lines)
+  .claude/agents/security.md                       (20 lines)
+  .claude/skills/build-db-main-db/SKILL.md         (35 lines)
+  .claude/skills/build-api-backend/SKILL.md        (42 lines)
+  .claude/skills/build-webui-frontend/SKILL.md     (38 lines)
+  .claude/skills/orchestrate/SKILL.md              (30 lines)
+  .claude/rules/api.md                             (12 lines)
+  .claude/rules/webui.md                           (10 lines)
+  .claude/rules/db.md                              (8 lines)
+  ...
+
+  Total: 19 files generated
+  Output: my-app/
+```
+
+### Step 5: Apply (compile + execute plan)
+
+Compile and display the phase execution plan with gates:
+
+```bash
+langc apply my-app.langc
+```
+
+This writes all files and shows the phased build order:
+
+```
+Applied my-app.langc → my-app/
+  19 files written
+
+═══ Phase 1: DB.main-db ═══
+  → Skill: /skills/build-db-main-db
+  → Gate: wait for approval before Phase 2
+
+═══ Phase 2: API.backend ═══
+  → Skill: /skills/build-api-backend
+  → Gate: wait for approval before Phase 3
+
+═══ Phase 3: WEBUI.frontend ═══
+  → Skill: /skills/build-webui-frontend
+  → Gate: final review
+
+Gate mode: phase-by-phase
+```
+
+### Step 6: Let Claude build it
+
+Copy the generated `my-app/` directory into your project. The `.claude/` directory contains everything Claude needs:
+
+1. **`CLAUDE.md`** — Project context, global rules, build order
+2. **`skills/orchestrate/SKILL.md`** — Run `/skills/orchestrate` to start the phased build
+3. **`agents/`** — Profile subagents that review generated code
+4. **`rules/`** — Path-specific coding rules per component type
+5. **`hooks/`** — Automated review guardrails that run on each skill completion
+
+Claude will build each component in dependency order, with the gate mode controlling when human approval is required.
+
+### Iterative development with UPDATE
+
+After the initial build, modify your `.langc` file to add new endpoints:
+
+```langc
+UPDATE API.backend {
+    ADD METHOD PUT    "/users/{id}" -> "update user name or email",
+    ADD METHOD DELETE "/users/{id}" -> "delete user by id"
+}
+```
+
+Re-run `langc compile` — incremental compilation detects only what changed:
+
+```
+  Changed: API.backend
+  Unchanged: DB.main-db, WEBUI.frontend
+```
+
+## Gate Modes
+
+Control how Claude pauses for human approval between build phases:
+
+| Mode | Behavior |
+|------|----------|
+| `phase-by-phase` (default) | Pause after each dependency phase for approval |
+| `manual` | Pause after every single component for explicit approval |
+| `auto` | Run all phases without pausing (fully autonomous) |
+| `confirm-on-warning` | Auto-proceed unless validation warnings exist |
+
+Set in your `.langc` file:
+
+```langc
+PROJECT "my-app" {
+    GATE = manual,
+    ...
+}
+```
+
+Or override at apply time:
+
+```bash
+langc apply my-app.langc --gate=auto
+```
+
+## Profiles
+
+Profiles are expert agents that govern how code is generated and reviewed.
+
+### Built-in profiles
+
+Use without a `FROM` path:
+
+| Profile | Role | What it enforces |
+|---------|------|------------------|
+| `Architect` | Senior Software Architect | Clean architecture, thin controllers, dependency injection, composition over inheritance |
+| `Security` | Application Security Engineer | Auth on all endpoints, input validation, parameterized queries, rate limiting, CORS |
+| `QA` | Quality Assurance Engineer | Unit + integration tests, fixtures, 80% coverage target |
+| `DevOps` | DevOps / Infrastructure Engineer | Dockerfiles, env vars, health checks, structured logging |
+
+```langc
+IMPORT Architect
+IMPORT Security
+```
+
+### Custom profiles
+
+Create a `.langc` file with a `PROFILE` declaration:
+
+```langc
+// profiles/my-team.langc
+PROFILE MyTeam {
+    ROLE = "Team Lead",
+
+    RULES {
+        "Use TypeScript strict mode everywhere",
+        "All functions must have JSDoc comments",
+        "No default exports"
+    },
+
+    PATTERNS {
+        API -> "src/ tests/ docs/",
+        WEBUI -> "src/components/ src/pages/ src/hooks/"
+    },
+
+    ON_REVIEW {
+        "Warn if a CREATE block has more than 5 methods — suggest splitting",
+        "Flag any endpoint without auth middleware"
+    }
+}
+```
+
+Import it with a `FROM` path:
+
+```langc
+IMPORT MyTeam FROM "./profiles/my-team.langc"
+
+PROJECT "my-app" {
+    PROFILES = [MyTeam],
+    ...
+}
+```
+
+### What each section does
+
+| Section | Purpose | Generated as |
+|---------|---------|-------------|
+| `ROLE` | Describes the agent's expertise | Agent identity in `.claude/agents/<name>.md` |
+| `RULES` | Coding rules injected into every skill | Global rules in `CLAUDE.md` + skill instructions |
+| `PATTERNS` | Directory structure per component type | `.claude/rules/<component>.md` |
+| `ON_REVIEW` | Automated checks run during validation | `.claude/hooks/review-<name>.sh` + smart warnings in `validate` |
+
+## Matching an existing codebase with REFERENCE
+
+Point `REFERENCE` at your existing project to have the transpiler detect its stack and conventions:
+
+```langc
+PROJECT "my-app" {
+    REFERENCE = "../existing-project",
+    ...
+}
+```
+
+The compiler scans the reference directory and injects detected patterns into `CLAUDE.md`:
+- **Languages** detected from file extensions
+- **Frameworks** from config files (next.config.js, pyproject.toml, etc.)
+- **Conventions** from directory structure (MVC, service layers, etc.)
+
+If your `.langc` file declares a different LNG or FRAMEWORK than what the reference uses, validation will warn you about the mismatch.
+
 ## CLI Commands
 
 ```bash
