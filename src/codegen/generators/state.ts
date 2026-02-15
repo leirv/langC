@@ -21,6 +21,11 @@ export class StateGenerator implements Generator {
       content: generateMemoryMd(ctx),
     });
 
+    // .langc/checksums/<id>.checksum — for drift detection
+    // These store the checksum of the generated SKILL.md content
+    // so we can later detect if the file was hand-edited
+    files.push(...generateFileChecksums(ctx, files));
+
     return files;
   }
 }
@@ -88,9 +93,16 @@ function generateStateJson(ctx: CompilationContext): string {
     components[id] = state;
   }
 
+  // Build phase tracking for resume support
+  const phaseStatus = ctx.dependencyGraph.phases.map((phase, i) => ({
+    phase: i + 1,
+    components: phase,
+    status: "pending" as string,
+  }));
+
   const state = {
     project: ctx.projectName,
-    version: 1,
+    version: 2,
     compiled_at: new Date().toISOString(),
     scope: ctx.scope,
     gate: ctx.gate,
@@ -100,6 +112,7 @@ function generateStateJson(ctx: CompilationContext): string {
     components,
     build_order: ctx.dependencyGraph.order,
     phases: ctx.dependencyGraph.phases,
+    phase_status: phaseStatus,
   };
 
   return JSON.stringify(state, null, 2) + "\n";
@@ -202,4 +215,32 @@ function getBlockFw(block: { properties: Array<{ kind: string }> }): string | nu
     if (p.kind === "FrameworkProperty" && "value" in p) return (p as { value: string }).value;
   }
   return null;
+}
+
+/**
+ * Generate checksum files for each generated SKILL.md.
+ * Used by drift detection to compare expected vs actual file contents.
+ */
+function generateFileChecksums(
+  ctx: CompilationContext,
+  allFiles: GeneratedFile[],
+): GeneratedFile[] {
+  const checksumFiles: GeneratedFile[] = [];
+
+  for (const block of ctx.createBlocks) {
+    const id = `${block.componentType}.${block.name}`;
+    const skillPath = `.claude/skills/build-${block.componentType.toLowerCase()}-${block.name}/SKILL.md`;
+
+    // Find the generated SKILL.md content
+    const skillFile = allFiles.find(f => f.path === skillPath);
+    if (!skillFile) continue;
+
+    const fileChecksum = computeChecksum(skillFile.content);
+    checksumFiles.push({
+      path: `.langc/checksums/${id}.checksum`,
+      content: fileChecksum + "\n",
+    });
+  }
+
+  return checksumFiles;
 }

@@ -52,10 +52,18 @@ function validate(filePath: string): number {
     return 1;
   }
 
-  // Step 2: Semantic validation
+  // Step 2: Semantic validation (with resolved profiles for deep checks)
   const absPath = resolve(filePath);
   const fileExists = (path: string) => existsSync(path);
-  const result = semanticValidate(ast, fileExists, absPath);
+  let resolvedProfiles: import("./codegen/types.js").ResolvedProfile[] | undefined;
+  try {
+    const compiler = new Compiler();
+    const { context } = compiler.compile(filePath);
+    resolvedProfiles = context.profiles;
+  } catch {
+    // If compilation fails, proceed without resolved profiles
+  }
+  const result = semanticValidate(ast, fileExists, absPath, resolvedProfiles);
 
   console.log(boxTop(`Validation: ${basename(filePath)}`));
   console.log(boxEmpty());
@@ -111,20 +119,28 @@ function plan(filePath: string): number {
     return 1;
   }
 
-  // Semantic validation first
+  // Compile to get full context (needed for resolved profiles)
+  let context: CompilationContext;
+  try {
+    const compiler = new Compiler();
+    const result = compiler.compile(filePath);
+    context = result.context;
+  } catch (err) {
+    console.error(`Plan error: ${err instanceof Error ? err.message : err}`);
+    return 1;
+  }
+
+  // Semantic validation with resolved profiles
   const absPath = resolve(filePath);
   const fileExists = (path: string) => existsSync(path);
-  const validationResult = semanticValidate(ast, fileExists, absPath);
+  const validationResult = semanticValidate(ast, fileExists, absPath, context.profiles);
 
   if (!validationResult.valid) {
     console.log("Validation failed — run `langc validate` for details.");
     return 1;
   }
 
-  // Compile to get full context
   try {
-    const compiler = new Compiler();
-    const { context } = compiler.compile(filePath);
     printRichPlan(context, validationResult);
     return 0;
   } catch (err) {

@@ -8,6 +8,7 @@ import { computeChecksum } from "./checksum.js";
  */
 interface PreviousState {
   components: Record<string, { checksum: string; status: string }>;
+  phase_status?: Array<{ phase: number; components: string[]; status: string }>;
 }
 
 /**
@@ -18,6 +19,16 @@ export interface IncrementalResult {
   unchanged: string[]; // component IDs with matching checksums
   added: string[];     // new components not in previous state
   removed: string[];   // components in state but not in current AST
+}
+
+/**
+ * Resume info — which phases were already completed.
+ */
+export interface ResumeInfo {
+  canResume: boolean;
+  completedPhases: number[];
+  nextPhase: number | null;
+  completedComponents: string[];
 }
 
 /**
@@ -105,4 +116,53 @@ export function computeIncremental(
     .filter(id => !currentIds.has(id));
 
   return { changed, unchanged, added, removed };
+}
+
+/**
+ * Determine resume info from previous state — which phases are done.
+ */
+export function getResumeInfo(outputDir: string): ResumeInfo {
+  const prevState = loadPreviousState(outputDir);
+
+  if (!prevState) {
+    return { canResume: false, completedPhases: [], nextPhase: null, completedComponents: [] };
+  }
+
+  const state = prevState as PreviousState;
+
+  // Check phase_status
+  if (!state.phase_status || state.phase_status.length === 0) {
+    // Legacy state without phase tracking — check individual component statuses
+    const completed = Object.entries(state.components)
+      .filter(([_, c]) => c.status === "completed")
+      .map(([id]) => id);
+
+    return {
+      canResume: completed.length > 0,
+      completedPhases: [],
+      nextPhase: null,
+      completedComponents: completed,
+    };
+  }
+
+  const completedPhases: number[] = [];
+  const completedComponents: string[] = [];
+
+  for (const ps of state.phase_status) {
+    if (ps.status === "completed") {
+      completedPhases.push(ps.phase);
+      completedComponents.push(...ps.components);
+    }
+  }
+
+  const allPhases = state.phase_status.map(ps => ps.phase);
+  const pendingPhases = allPhases.filter(p => !completedPhases.includes(p));
+  const nextPhase = pendingPhases.length > 0 ? Math.min(...pendingPhases) : null;
+
+  return {
+    canResume: completedPhases.length > 0 && nextPhase !== null,
+    completedPhases,
+    nextPhase,
+    completedComponents,
+  };
 }

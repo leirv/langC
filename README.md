@@ -127,9 +127,10 @@ src/
     ├── import-resolver.ts ← Parse FROM files, flatten EXTENDS
     ├── dependency-graph.ts ← DAG, topological sort, cycle detection
     ├── compiler.ts       ← Pipeline orchestrator
-    ├── validator.ts      ← Semantic validation (DEPENDS, cycles, imports)
+    ├── validator.ts      ← Semantic validation (DEPENDS, cycles, imports, conflicts, ON_REVIEW)
     ├── checksum.ts       ← SHA-256 checksums for state tracking
-    ├── incremental.ts    ← Incremental compilation (diff vs previous state)
+    ├── incremental.ts    ← Incremental compilation + resume detection
+    ├── drift.ts          ← Drift detection (external file modifications)
     ├── reference-scanner.ts ← REFERENCE codebase scanning + detection
     ├── writer.ts         ← Filesystem writer (only fs-touching module)
     ├── builtin-profiles.ts ← Architect, Security, QA, DevOps
@@ -142,7 +143,7 @@ src/
         ├── lng-rules.ts
         ├── hooks.ts      ← (includes permissions.allow/deny)
         ├── orchestrate.ts
-        ├── state.ts      ← (includes checksums, paths, methods)
+        ├── state.ts      ← (includes checksums, paths, methods, drift checksums)
         └── plan-skill.ts
 ```
 
@@ -163,7 +164,7 @@ src/
 | Phase 2 | ✅ Complete | Code generation — all generators, 19 output files, 121 tests |
 | Phase 3 | ✅ Complete | Human-in-the-loop — semantic validation, rich plan, compile with line counts, apply with phase gates (139 tests) |
 | Phase 4 | ✅ Complete | REFERENCE scanning, permissions, checksums, incremental compilation (165 tests) |
-| Phase 5 | ⏳ Pending | Drift detection, resume from partial, deep profile conflicts, smart ON_REVIEW |
+| Phase 5 | ✅ Complete | Drift detection, resume from partial, deep profile conflicts, smart ON_REVIEW, REFERENCE overrides (187 tests) |
 
 ### Running Tests
 
