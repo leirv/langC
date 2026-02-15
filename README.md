@@ -84,14 +84,18 @@ npm run build
 ## CLI Commands
 
 ```bash
-# Validate syntax
+# Semantic validation (syntax + DEPENDS + cycles + imports + conflicts)
 langc validate examples/test-app.langc
 
-# Preview AST summary
+# Rich build plan with phases, profile reviews, and gate mode
 langc plan examples/test-app.langc
 
-# Compile to .claude/ artifacts
+# Compile to .claude/ artifacts with line counts
 langc compile examples/test-app.langc
+
+# Compile + write + show phase execution plan with gates
+langc apply examples/test-app.langc
+langc apply examples/test-app.langc --gate=manual
 ```
 
 ## Architecture
@@ -115,22 +119,28 @@ src/
 │   └── errors.ts         ← Parse error collector
 ├── errors/
 │   └── diagnostics.ts    ← Error formatting
-└── codegen/              ← Phase 2: Code generation
+├── cli/
+│   └── format.ts         ← Box-style CLI formatting utilities
+└── codegen/              ← Phase 2: Code generation + Phase 3: Validation
     ├── types.ts          ← GeneratedFile, CompilationContext
     ├── generator.ts      ← Generator interface
     ├── import-resolver.ts ← Parse FROM files, flatten EXTENDS
     ├── dependency-graph.ts ← DAG, topological sort, cycle detection
     ├── compiler.ts       ← Pipeline orchestrator
+    ├── validator.ts      ← Semantic validation (DEPENDS, cycles, imports)
     ├── writer.ts         ← Filesystem writer (only fs-touching module)
+    ├── builtin-profiles.ts ← Architect, Security, QA, DevOps
     └── generators/       ← One generator per artifact type
         ├── claude-md.ts
         ├── create-skill.ts
         ├── update-skill.ts
         ├── agent.ts
         ├── rules.ts
+        ├── lng-rules.ts
         ├── hooks.ts
         ├── orchestrate.ts
-        └── state.ts
+        ├── state.ts
+        └── plan-skill.ts
 ```
 
 ## Design Principles
@@ -148,7 +158,7 @@ src/
 |-------|--------|-------------|
 | Phase 1 | ✅ Complete | Lexer + Parser + AST + CLI (`validate`, `plan`) |
 | Phase 2 | ✅ Complete | Code generation — all generators, 19 output files, 121 tests |
-| Phase 3 | ⏳ Pending | Human-in-the-loop (semantic validate, rich plan, apply with gates) |
+| Phase 3 | ✅ Complete | Human-in-the-loop — semantic validation, rich plan, compile with line counts, apply with phase gates (139 tests) |
 
 ### Running Tests
 
@@ -162,6 +172,8 @@ npm run test:watch    # Watch mode
 ```bash
 npm run langc -- validate examples/test-app.langc
 npm run langc -- plan examples/test-app.langc
+npm run langc -- compile examples/test-app.langc
+npm run langc -- apply examples/test-app.langc --gate=manual
 ```
 
 ## Language Reference
