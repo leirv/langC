@@ -94,34 +94,51 @@ IMPORT Architect
 IMPORT Security
 
 PROJECT "my-app" {
+    CTX = "Multi-tenant B2B SaaS for invoice management. SOC2 compliance required. Stripe for payments.",
     SCOPE = full,
+    GATE = phase-by-phase,
     PROFILES = [Architect, Security],
 
     CREATE DB "main-db" {
+        CTX = "Shared database across all tenants. Row-level security via tenant_id column.",
         LNG = postgresql,
         DEPENDS = none,
-        TABLE "users" {
-            id: int -> "primary key, auto increment",
-            email: string -> "required, unique",
-            name: string -> "required, max 100 chars"
+        TABLE "tenants" {
+            id: uuid -> "primary key",
+            name: string -> "company name, required",
+            plan: string -> "free | pro | enterprise",
+            stripe_customer_id: string -> "nullable, set after Stripe onboarding"
+        },
+        TABLE "invoices" {
+            id: uuid -> "primary key",
+            tenant_id: uuid -> "foreign key to tenants, used for row-level security",
+            amount_cents: int -> "stored in cents to avoid floating point",
+            status: string -> "draft | sent | paid | overdue",
+            due_date: date -> "required"
         }
     },
 
-    CREATE API "backend" {
+    CREATE API "billing" {
+        CTX = "Billing service consumed by the dashboard and Stripe webhooks. Must handle idempotent webhook retries.",
         LNG = python,
         FRAMEWORK = fastapi,
         DEPENDS = [DB.main-db],
-        METHOD GET  "/users"      -> "list all users with pagination",
-        METHOD POST "/users"      -> "create a user with email and name",
-        METHOD GET  "/users/{id}" -> "get user by id"
+        METHOD GET    "/invoices"            -> "list invoices for current tenant with pagination and status filter",
+        METHOD POST   "/invoices"            -> "create a draft invoice",
+        METHOD GET    "/invoices/{id}"       -> "get invoice by id, scoped to tenant",
+        METHOD PUT    "/invoices/{id}"       -> "update draft invoice amount or due date",
+        METHOD POST   "/invoices/{id}/send"  -> "mark invoice as sent, trigger email notification",
+        PUBLIC METHOD POST "/webhooks/stripe" -> "handle Stripe payment webhooks, idempotent"
     },
 
-    CREATE WEBUI "frontend" {
+    CREATE WEBUI "dashboard" {
+        CTX = "Internal dashboard for finance teams. Must support bulk operations on invoices.",
         LNG = React,
         FRAMEWORK = nextjs,
-        DEPENDS = [API.backend],
-        DISPLAY API.backend.GET("/users")     -> "Table showing all users",
-        DISPLAY API.backend.POST("/users")    -> "Form to create a new user"
+        DEPENDS = [API.billing],
+        DISPLAY API.billing.GET("/invoices")      -> "Table with filters by status, sortable by due date",
+        DISPLAY API.billing.POST("/invoices")     -> "Form to create new invoice with amount and due date",
+        DISPLAY API.billing.GET("/invoices/{id}") -> "Invoice detail page with payment history"
     }
 }
 ```
@@ -172,15 +189,15 @@ Output:
 
 ```
 Generated .claude/ artifacts:
-  CLAUDE.md                                        (45 lines)
-  .langc/state.json                                (62 lines)
+  CLAUDE.md                                        (52 lines)
+  .langc/state.json                                (68 lines)
   .claude/settings.json                            (28 lines)
   .claude/agents/architect.md                      (22 lines)
   .claude/agents/security.md                       (20 lines)
-  .claude/skills/build-db-main-db/SKILL.md         (35 lines)
-  .claude/skills/build-api-backend/SKILL.md        (42 lines)
-  .claude/skills/build-webui-frontend/SKILL.md     (38 lines)
-  .claude/skills/orchestrate/SKILL.md              (30 lines)
+  .claude/skills/build-db-main-db/SKILL.md         (40 lines)
+  .claude/skills/build-api-billing/SKILL.md        (48 lines)
+  .claude/skills/build-webui-dashboard/SKILL.md    (42 lines)
+  .claude/skills/orchestrate/SKILL.md              (35 lines)
   .claude/rules/api.md                             (12 lines)
   .claude/rules/webui.md                           (10 lines)
   .claude/rules/db.md                              (8 lines)
@@ -208,12 +225,12 @@ Applied my-app.langc → my-app/
   → Skill: /skills/build-db-main-db
   → Gate: wait for approval before Phase 2
 
-═══ Phase 2: API.backend ═══
-  → Skill: /skills/build-api-backend
+═══ Phase 2: API.billing ═══
+  → Skill: /skills/build-api-billing
   → Gate: wait for approval before Phase 3
 
-═══ Phase 3: WEBUI.frontend ═══
-  → Skill: /skills/build-webui-frontend
+═══ Phase 3: WEBUI.dashboard ═══
+  → Skill: /skills/build-webui-dashboard
   → Gate: final review
 
 Gate mode: phase-by-phase
@@ -236,17 +253,17 @@ Claude will build each component in dependency order, with the gate mode control
 After the initial build, modify your `.langc` file to add new endpoints:
 
 ```langc
-UPDATE API.backend {
-    ADD METHOD PUT    "/users/{id}" -> "update user name or email",
-    ADD METHOD DELETE "/users/{id}" -> "delete user by id"
+UPDATE API.billing {
+    ADD METHOD DELETE "/invoices/{id}" -> "void a draft invoice",
+    ADD METHOD GET    "/invoices/overdue" -> "list overdue invoices for dunning"
 }
 ```
 
 Re-run `langc compile` — incremental compilation detects only what changed:
 
 ```
-  Changed: API.backend
-  Unchanged: DB.main-db, WEBUI.frontend
+  Changed: API.billing
+  Unchanged: DB.main-db, WEBUI.dashboard
 ```
 
 ## Gate Modes
