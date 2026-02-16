@@ -29,10 +29,10 @@ describe("E2E compilation", () => {
     expect(paths).toContain(".claude/rules/webui.md");
     expect(paths).toContain(".claude/rules/db.md");
 
-    // Hooks
-    expect(paths).toContain(".claude/hooks/review-architect.sh");
-    expect(paths).toContain(".claude/hooks/review-security.sh");
+    // Settings (Stop hook + permissions, no PostToolUse hook scripts)
     expect(paths).toContain(".claude/settings.json");
+    expect(paths).not.toContain(".claude/hooks/review-architect.sh");
+    expect(paths).not.toContain(".claude/hooks/review-security.sh");
 
     // Memory
     expect(paths).toContain(".claude/agent-memory/langc/MEMORY.md");

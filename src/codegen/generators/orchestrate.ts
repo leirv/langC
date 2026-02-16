@@ -34,6 +34,21 @@ export class OrchestrateGenerator implements Generator {
     lines.push("```");
     lines.push("");
 
+    // Phase 0: Architect consultation
+    const consultProfiles = ctx.profiles.filter(p => p.role || p.onReview.length > 0);
+    if (consultProfiles.length > 0) {
+      lines.push("## Phase 0: Architecture Review");
+      lines.push("");
+      lines.push("Before building, consult profile agents to establish architectural decisions, constraints, and patterns.");
+      lines.push("");
+      for (const p of consultProfiles) {
+        lines.push(`- **@${p.name.toLowerCase()}**: Review the dependency graph and component specs. Define ${p.name.toLowerCase()} decisions, constraints, and patterns to follow during build.`);
+      }
+      lines.push("");
+      lines.push("Resolve all Phase 0 feedback before proceeding to build phases.");
+      lines.push("");
+    }
+
     // Execution steps by phase
     lines.push("## Execution Steps");
     lines.push("");
@@ -49,6 +64,10 @@ export class OrchestrateGenerator implements Generator {
         const node = ctx.dependencyGraph.nodes.get(id)!;
         const skillName = `build-${node.componentType.toLowerCase()}-${node.name}`;
         lines.push(`Execute: \`/${skillName}\``);
+      }
+
+      if (consultProfiles.length > 0) {
+        lines.push(`For architectural doubts, consult ${consultProfiles.map(p => `@${p.name.toLowerCase()}`).join(", ")}.`);
       }
 
       if (i < ctx.dependencyGraph.phases.length - 1) {

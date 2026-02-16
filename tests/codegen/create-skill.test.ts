@@ -173,4 +173,34 @@ describe("CreateSkillGenerator", () => {
     expect(files[0].content).toContain("**Project**: SaaS platform.");
     expect(files[0].content).not.toContain("**Component**");
   });
+
+  it("includes agent consultation hint when profiles have constraints", () => {
+    const blocks: CreateBlock[] = [{
+      kind: "CreateBlock", componentType: "API", name: "users",
+      properties: [], members: [], loc,
+    }];
+    const ctx = makeCtx(blocks);
+    ctx.profiles = [
+      { name: "Architect", version: null, role: "Architect", rules: ["use hexagonal"], patterns: [], onReview: [] },
+      { name: "Security", version: null, role: null, rules: ["enforce auth"], patterns: [], onReview: [] },
+    ];
+
+    const files = gen.generate(ctx);
+    expect(files[0].content).toContain("## Guidance");
+    expect(files[0].content).toContain("consult @architect, @security for clarification");
+  });
+
+  it("omits consultation hint when no profile constraints apply", () => {
+    const blocks: CreateBlock[] = [{
+      kind: "CreateBlock", componentType: "API", name: "users",
+      properties: [], members: [], loc,
+    }];
+    const ctx = makeCtx(blocks);
+    ctx.profiles = [
+      { name: "Architect", version: null, role: "Architect", rules: [], patterns: [], onReview: [] },
+    ];
+
+    const files = gen.generate(ctx);
+    expect(files[0].content).not.toContain("## Guidance");
+  });
 });

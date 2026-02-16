@@ -99,6 +99,7 @@ function generateSkillContent(
   }
 
   // Profile constraints
+  const consultAgents: string[] = [];
   for (const profile of ctx.profiles) {
     const relevantPatterns = profile.patterns.filter(
       p => p.componentType.toUpperCase() === block.componentType,
@@ -120,7 +121,17 @@ function generateSkillContent(
         lines.push("```");
         lines.push("");
       }
+
+      consultAgents.push(profile.name.toLowerCase());
     }
+  }
+
+  // Agent consultation hint
+  if (consultAgents.length > 0) {
+    lines.push("## Guidance");
+    lines.push("");
+    lines.push(`If you have doubts about constraints, consult ${consultAgents.map(a => `@${a}`).join(", ")} for clarification.`);
+    lines.push("");
   }
 
   // Output structure

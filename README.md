@@ -57,7 +57,7 @@ test-app/
 ├── CLAUDE.md                          ← Project context, rules, build order
 ├── .langc/state.json                  ← Build state tracking
 └── .claude/
-    ├── settings.json                  ← Review hooks + permissions
+    ├── settings.json                  ← Stop hook + permissions (no PostToolUse)
     ├── agents/                        ← PROFILE → subagent definitions
     │   ├── architect.md
     │   └── security.md
@@ -65,14 +65,11 @@ test-app/
     │   ├── build-db-users-db.md
     │   ├── build-api-users.md
     │   ├── build-webui-users-display.md
-    │   └── orchestrate.md             ← Dependency-ordered build plan
+    │   └── orchestrate.md             ← Phase 0 review + dependency-ordered build
     ├── rules/                         ← PATTERNS → path-specific rules
     │   ├── api.md
     │   ├── webui.md
     │   └── db.md
-    ├── hooks/                         ← ON_REVIEW → automated guardrails
-    │   ├── review-architect.sh
-    │   └── review-security.sh
     └── agent-memory/langc/MEMORY.md   ← Build summary for Claude
 ```
 
@@ -241,10 +238,10 @@ Gate mode: phase-by-phase
 Copy the generated `my-app/` directory into your project. The `.claude/` directory contains everything Claude needs:
 
 1. **`CLAUDE.md`** — Project context, global rules, build order
-2. **`commands/orchestrate.md`** — Run `/orchestrate` to start the phased build
-3. **`agents/`** — Profile subagents that review generated code
+2. **`commands/orchestrate.md`** — Run `/orchestrate` to start with Phase 0 architecture review, then phased build
+3. **`agents/`** — Profile subagents consulted during Phase 0 and available for on-demand guidance
 4. **`rules/`** — Path-specific coding rules per component type
-5. **`hooks/`** — Automated review guardrails that run on each command completion
+5. **`settings.json`** — End-of-session Stop hook review + permissions (no per-write hooks)
 
 Claude will build each component in dependency order, with the gate mode controlling when human approval is required.
 
@@ -382,7 +379,7 @@ PROJECT "my-app" {
 | `ROLE` | Describes the agent's expertise | Agent identity in `.claude/agents/<name>.md` |
 | `RULES` | Coding rules injected into every skill | Global rules in `CLAUDE.md` + skill instructions |
 | `PATTERNS` | Directory structure per component type | `.claude/rules/<component>.md` |
-| `ON_REVIEW` | Automated checks run during validation | `.claude/hooks/review-<name>.sh` + smart warnings in `validate` |
+| `ON_REVIEW` | End-of-session review checklist | Stop hook in `settings.json` + smart warnings in `validate` |
 
 ## Matching an existing codebase with REFERENCE
 
@@ -501,6 +498,7 @@ This is the single change that makes the generated orchestration plan actually e
 | Phase 5 | ✅ Complete | Drift detection, resume from partial, deep profile conflicts, smart ON_REVIEW, REFERENCE overrides (187 tests) |
 | Phase 6 | ✅ Complete | Hierarchical CTX property — business context at project and block level, flows into all generated files (197 tests) |
 | Phase 7 | ✅ Complete | Skills → Commands — convert skills to `.claude/commands/` for native Claude Code invocation, output structure hints, done checklists (200 tests) |
+| Phase 8 | ✅ Complete | Architect as Phase 0 consultant — remove PostToolUse hooks, add Phase 0 architecture review, agent consultation hints in build commands (206 tests) |
 
 ### Running Tests
 

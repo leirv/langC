@@ -27,7 +27,7 @@ function makeCtx(profiles: ResolvedProfile[], blocks: CreateBlock[] = []): Compi
 describe("HooksGenerator", () => {
   const gen = new HooksGenerator();
 
-  it("generates hook script per profile with onReview", () => {
+  it("generates only settings.json (no hook scripts)", () => {
     const profiles: ResolvedProfile[] = [
       { name: "Security", version: null, role: null, rules: [], patterns: [], onReview: ["Flag SQL injection"] },
       { name: "Architect", version: null, role: null, rules: [], patterns: [], onReview: ["Check layer separation"] },
@@ -35,23 +35,12 @@ describe("HooksGenerator", () => {
 
     const files = gen.generate(makeCtx(profiles));
     const paths = files.map(f => f.path);
-    expect(paths).toContain(".claude/hooks/review-security.sh");
-    expect(paths).toContain(".claude/hooks/review-architect.sh");
-    expect(paths).toContain(".claude/settings.json");
+    expect(paths).toEqual([".claude/settings.json"]);
+    expect(paths).not.toContain(".claude/hooks/review-security.sh");
+    expect(paths).not.toContain(".claude/hooks/review-architect.sh");
   });
 
-  it("hook scripts are bash with shebang", () => {
-    const profiles: ResolvedProfile[] = [
-      { name: "Security", version: null, role: null, rules: [], patterns: [], onReview: ["Flag issues"] },
-    ];
-
-    const files = gen.generate(makeCtx(profiles));
-    const hook = files.find(f => f.path.endsWith(".sh"))!;
-    expect(hook.content).toMatch(/^#!/);
-    expect(hook.content).toContain("Security profile ON_REVIEW");
-  });
-
-  it("settings.json is valid JSON with hooks and permissions", () => {
+  it("settings.json has Stop hook but no PostToolUse", () => {
     const profiles: ResolvedProfile[] = [
       { name: "Security", version: null, role: null, rules: [], patterns: [], onReview: ["check"] },
     ];
@@ -60,23 +49,33 @@ describe("HooksGenerator", () => {
     const settings = files.find(f => f.path === ".claude/settings.json")!;
     const parsed = JSON.parse(settings.content);
     expect(parsed.hooks).toBeDefined();
-    expect(parsed.hooks.PostToolUse).toBeInstanceOf(Array);
     expect(parsed.hooks.Stop).toBeInstanceOf(Array);
-    expect(parsed.permissions).toBeDefined();
-    expect(parsed.permissions.allow).toBeInstanceOf(Array);
-    expect(parsed.permissions.deny).toBeInstanceOf(Array);
+    expect(parsed.hooks.PostToolUse).toBeUndefined();
   });
 
-  it("settings.json references hook scripts", () => {
+  it("Stop hook contains agent type with review prompt", () => {
+    const profiles: ResolvedProfile[] = [
+      { name: "Security", version: null, role: null, rules: [], patterns: [], onReview: ["Flag SQL injection"] },
+    ];
+
+    const files = gen.generate(makeCtx(profiles));
+    const parsed = JSON.parse(files.find(f => f.path === ".claude/settings.json")!.content);
+    const stopHook = parsed.hooks.Stop[0].hooks[0];
+    expect(stopHook.type).toBe("agent");
+    expect(stopHook.prompt).toContain("Flag SQL injection");
+    expect(stopHook.timeout).toBe(120);
+  });
+
+  it("settings.json has permissions", () => {
     const profiles: ResolvedProfile[] = [
       { name: "Security", version: null, role: null, rules: [], patterns: [], onReview: ["check"] },
     ];
 
     const files = gen.generate(makeCtx(profiles));
-    const settings = files.find(f => f.path === ".claude/settings.json")!;
-    const parsed = JSON.parse(settings.content);
-    const command = parsed.hooks.PostToolUse[0].hooks[0].command;
-    expect(command).toContain("review-security.sh");
+    const parsed = JSON.parse(files.find(f => f.path === ".claude/settings.json")!.content);
+    expect(parsed.permissions).toBeDefined();
+    expect(parsed.permissions.allow).toBeInstanceOf(Array);
+    expect(parsed.permissions.deny).toBeInstanceOf(Array);
   });
 
   it("produces no files when no onReview rules", () => {

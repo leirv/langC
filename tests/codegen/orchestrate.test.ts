@@ -141,4 +141,67 @@ describe("OrchestrateGenerator", () => {
     expect(files[0].content).toContain("## Context");
     expect(files[0].content).toContain("Multi-tenant SaaS platform.");
   });
+
+  it("includes Phase 0 architecture review when profiles have roles", () => {
+    const blocks: CreateBlock[] = [
+      { kind: "CreateBlock", componentType: "DB", name: "data", properties: [], members: [], loc },
+    ];
+    const graph: DependencyGraph = {
+      nodes: new Map([["DB.data", { id: "DB.data", componentType: "DB", name: "data", dependsOn: [] }]]),
+      order: ["DB.data"],
+      phases: [["DB.data"]],
+    };
+
+    const files = gen.generate(makeCtx(blocks, graph));
+    expect(files[0].content).toContain("## Phase 0: Architecture Review");
+    expect(files[0].content).toContain("@architect");
+  });
+
+  it("Phase 0 appears before Execution Steps", () => {
+    const blocks: CreateBlock[] = [
+      { kind: "CreateBlock", componentType: "DB", name: "data", properties: [], members: [], loc },
+    ];
+    const graph: DependencyGraph = {
+      nodes: new Map([["DB.data", { id: "DB.data", componentType: "DB", name: "data", dependsOn: [] }]]),
+      order: ["DB.data"],
+      phases: [["DB.data"]],
+    };
+
+    const files = gen.generate(makeCtx(blocks, graph));
+    const content = files[0].content;
+    const phase0Idx = content.indexOf("## Phase 0");
+    const execIdx = content.indexOf("## Execution Steps");
+    expect(phase0Idx).toBeGreaterThan(-1);
+    expect(execIdx).toBeGreaterThan(phase0Idx);
+  });
+
+  it("build phases include consultation hint", () => {
+    const blocks: CreateBlock[] = [
+      { kind: "CreateBlock", componentType: "DB", name: "data", properties: [], members: [], loc },
+    ];
+    const graph: DependencyGraph = {
+      nodes: new Map([["DB.data", { id: "DB.data", componentType: "DB", name: "data", dependsOn: [] }]]),
+      order: ["DB.data"],
+      phases: [["DB.data"]],
+    };
+
+    const files = gen.generate(makeCtx(blocks, graph));
+    expect(files[0].content).toContain("For architectural doubts, consult @architect");
+  });
+
+  it("skips Phase 0 when no profiles qualify", () => {
+    const blocks: CreateBlock[] = [
+      { kind: "CreateBlock", componentType: "DB", name: "data", properties: [], members: [], loc },
+    ];
+    const graph: DependencyGraph = {
+      nodes: new Map([["DB.data", { id: "DB.data", componentType: "DB", name: "data", dependsOn: [] }]]),
+      order: ["DB.data"],
+      phases: [["DB.data"]],
+    };
+
+    const ctx = makeCtx(blocks, graph);
+    ctx.profiles = [{ name: "Empty", version: null, role: null, rules: [], patterns: [], onReview: [] }];
+    const files = gen.generate(ctx);
+    expect(files[0].content).not.toContain("Phase 0");
+  });
 });
