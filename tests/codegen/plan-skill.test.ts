@@ -39,7 +39,7 @@ describe("PlanSkillGenerator", () => {
 
     const files = gen.generate(makeCtx(blocks, graph));
     expect(files).toHaveLength(1);
-    expect(files[0].path).toBe(".claude/skills/plan/SKILL.md");
+    expect(files[0].path).toBe(".claude/commands/plan.md");
   });
 
   it("includes gate mode", () => {

@@ -44,7 +44,7 @@ describe("UpdateSkillGenerator", () => {
 
     const files = gen.generate(makeCtx(updates));
     expect(files).toHaveLength(1);
-    expect(files[0].path).toBe(".claude/skills/update-api-users/SKILL.md");
+    expect(files[0].path).toBe(".claude/commands/update-api-users.md");
     expect(files[0].content).toContain("API.users");
     expect(files[0].content).toContain("DELETE /users/{id}");
     expect(files[0].content).toContain("soft delete user");

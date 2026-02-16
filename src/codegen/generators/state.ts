@@ -229,7 +229,7 @@ function generateFileChecksums(
 
   for (const block of ctx.createBlocks) {
     const id = `${block.componentType}.${block.name}`;
-    const skillPath = `.claude/skills/build-${block.componentType.toLowerCase()}-${block.name}/SKILL.md`;
+    const skillPath = `.claude/commands/build-${block.componentType.toLowerCase()}-${block.name}.md`;
 
     // Find the generated SKILL.md content
     const skillFile = allFiles.find(f => f.path === skillPath);

@@ -1,6 +1,6 @@
 # LangC — A DSL Transpiler for Claude Orchestration
 
-LangC compiles structured `.langc` files into complete `.claude/` directory trees — subagent definitions, skills, rules, hooks, and orchestration plans that Claude can execute autonomously.
+LangC compiles structured `.langc` files into complete `.claude/` directory trees — subagent definitions, commands, rules, hooks, and orchestration plans that Claude can execute autonomously.
 
 ## Why LangC?
 
@@ -61,11 +61,11 @@ test-app/
     ├── agents/                        ← PROFILE → subagent definitions
     │   ├── architect.md
     │   └── security.md
-    ├── skills/                        ← CREATE/UPDATE → executable skills
-    │   ├── build-db-users-db/SKILL.md
-    │   ├── build-api-users/SKILL.md
-    │   ├── build-webui-users-display/SKILL.md
-    │   └── orchestrate/SKILL.md       ← Dependency-ordered build plan
+    ├── commands/                      ← CREATE/UPDATE → executable commands
+    │   ├── build-db-users-db.md
+    │   ├── build-api-users.md
+    │   ├── build-webui-users-display.md
+    │   └── orchestrate.md             ← Dependency-ordered build plan
     ├── rules/                         ← PATTERNS → path-specific rules
     │   ├── api.md
     │   ├── webui.md
@@ -194,10 +194,10 @@ Generated .claude/ artifacts:
   .claude/settings.json                            (28 lines)
   .claude/agents/architect.md                      (22 lines)
   .claude/agents/security.md                       (20 lines)
-  .claude/skills/build-db-main-db/SKILL.md         (40 lines)
-  .claude/skills/build-api-billing/SKILL.md        (48 lines)
-  .claude/skills/build-webui-dashboard/SKILL.md    (42 lines)
-  .claude/skills/orchestrate/SKILL.md              (35 lines)
+  .claude/commands/build-db-main-db.md              (40 lines)
+  .claude/commands/build-api-billing.md             (48 lines)
+  .claude/commands/build-webui-dashboard.md         (42 lines)
+  .claude/commands/orchestrate.md                   (35 lines)
   .claude/rules/api.md                             (12 lines)
   .claude/rules/webui.md                           (10 lines)
   .claude/rules/db.md                              (8 lines)
@@ -222,15 +222,15 @@ Applied my-app.langc → my-app/
   19 files written
 
 ═══ Phase 1: DB.main-db ═══
-  → Skill: /skills/build-db-main-db
+  → Command: /build-db-main-db
   → Gate: wait for approval before Phase 2
 
 ═══ Phase 2: API.billing ═══
-  → Skill: /skills/build-api-billing
+  → Command: /build-api-billing
   → Gate: wait for approval before Phase 3
 
 ═══ Phase 3: WEBUI.dashboard ═══
-  → Skill: /skills/build-webui-dashboard
+  → Command: /build-webui-dashboard
   → Gate: final review
 
 Gate mode: phase-by-phase
@@ -241,10 +241,10 @@ Gate mode: phase-by-phase
 Copy the generated `my-app/` directory into your project. The `.claude/` directory contains everything Claude needs:
 
 1. **`CLAUDE.md`** — Project context, global rules, build order
-2. **`skills/orchestrate/SKILL.md`** — Run `/skills/orchestrate` to start the phased build
+2. **`commands/orchestrate.md`** — Run `/orchestrate` to start the phased build
 3. **`agents/`** — Profile subagents that review generated code
 4. **`rules/`** — Path-specific coding rules per component type
-5. **`hooks/`** — Automated review guardrails that run on each skill completion
+5. **`hooks/`** — Automated review guardrails that run on each command completion
 
 Claude will build each component in dependency order, with the gate mode controlling when human approval is required.
 
@@ -314,8 +314,8 @@ PROJECT "my-app" {
 
 | Level | Where it appears |
 |-------|-----------------|
-| Project CTX | `CLAUDE.md`, orchestrate skill, plan skill |
-| Block CTX | Component skill files (alongside project CTX) |
+| Project CTX | `CLAUDE.md`, orchestrate command, plan command |
+| Block CTX | Component command files (alongside project CTX) |
 
 ## Profiles
 
@@ -487,6 +487,7 @@ src/
 | Phase 4 | ✅ Complete | REFERENCE scanning, permissions, checksums, incremental compilation (165 tests) |
 | Phase 5 | ✅ Complete | Drift detection, resume from partial, deep profile conflicts, smart ON_REVIEW, REFERENCE overrides (187 tests) |
 | Phase 6 | ✅ Complete | Hierarchical CTX property — business context at project and block level, flows into all generated files (197 tests) |
+| Phase 7 | ✅ Complete | Skills → Commands — convert skills to `.claude/commands/` for native Claude Code invocation, output structure hints, done checklists (200 tests) |
 
 ### Running Tests
 

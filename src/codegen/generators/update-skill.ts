@@ -13,7 +13,7 @@ export class UpdateSkillGenerator implements Generator {
       const typeName = target[0]?.toLowerCase() ?? "unknown";
       const componentName = target.slice(1).join("-") || "unknown";
       const skillName = `update-${typeName}-${componentName}`;
-      const path = `.claude/skills/${skillName}/SKILL.md`;
+      const path = `.claude/commands/${skillName}.md`;
       const content = generateUpdateContent(block, skillName, ctx);
       files.push({ path, content });
     }
@@ -29,16 +29,6 @@ function generateUpdateContent(
 ): string {
   const target = block.target.parts.join(".");
   const lines: string[] = [];
-
-  // YAML frontmatter
-  lines.push("---");
-  lines.push(`name: ${skillName}`);
-  lines.push(`description: Updates the existing ${target} component.`);
-  lines.push("  Only modifies — does not rebuild existing functionality.");
-  lines.push("user-invocable: true");
-  lines.push("allowed-tools: Read, Write, Edit, Bash, Glob, Grep");
-  lines.push("---");
-  lines.push("");
 
   lines.push(`# Task: Update Component "${target}"`);
   lines.push("");

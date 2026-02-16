@@ -46,11 +46,11 @@ describe("CreateSkillGenerator", () => {
 
     const files = gen.generate(makeCtx(blocks));
     expect(files).toHaveLength(2);
-    expect(files[0].path).toBe(".claude/skills/build-db-users-db/SKILL.md");
-    expect(files[1].path).toBe(".claude/skills/build-api-users/SKILL.md");
+    expect(files[0].path).toBe(".claude/commands/build-db-users-db.md");
+    expect(files[1].path).toBe(".claude/commands/build-api-users.md");
   });
 
-  it("includes YAML frontmatter", () => {
+  it("has no YAML frontmatter", () => {
     const blocks: CreateBlock[] = [{
       kind: "CreateBlock", componentType: "API", name: "users",
       properties: [{ kind: "LngProperty", value: "python", loc }],
@@ -58,9 +58,39 @@ describe("CreateSkillGenerator", () => {
     }];
 
     const files = gen.generate(makeCtx(blocks));
-    expect(files[0].content).toMatch(/^---\n/);
-    expect(files[0].content).toContain("name: build-api-users");
-    expect(files[0].content).toContain("user-invocable: true");
+    expect(files[0].content).not.toMatch(/^---\n/);
+    expect(files[0].content).toMatch(/^# Task:/);
+  });
+
+  it("includes Output Structure section", () => {
+    const blocks: CreateBlock[] = [{
+      kind: "CreateBlock", componentType: "API", name: "users",
+      properties: [
+        { kind: "LngProperty", value: "python", loc },
+        { kind: "FrameworkProperty", value: "fastapi", loc },
+      ],
+      members: [], loc,
+    }];
+
+    const files = gen.generate(makeCtx(blocks));
+    expect(files[0].content).toContain("## Output Structure");
+    expect(files[0].content).toContain("users/app/main.py");
+    expect(files[0].content).toContain("users/app/routers/");
+  });
+
+  it("includes Done checklist", () => {
+    const blocks: CreateBlock[] = [{
+      kind: "CreateBlock", componentType: "API", name: "users",
+      properties: [],
+      members: [
+        { kind: "MethodDecl", isPublic: false, httpMethod: "GET", path: "/users", description: "list users", loc },
+      ],
+      loc,
+    }];
+
+    const files = gen.generate(makeCtx(blocks));
+    expect(files[0].content).toContain("## Done");
+    expect(files[0].content).toContain("This command is complete when:");
   });
 
   it("renders endpoint table for API methods", () => {

@@ -92,7 +92,7 @@ export class ClaudeMdGenerator implements Generator {
     // Build instructions
     if (ctx.createBlocks.length > 0) {
       lines.push("## Build Instructions");
-      lines.push("To build this project, execute the skills in dependency order:");
+      lines.push("To build this project, execute the commands in dependency order:");
       let i = 1;
       for (const id of ctx.dependencyGraph.order) {
         const node = ctx.dependencyGraph.nodes.get(id)!;

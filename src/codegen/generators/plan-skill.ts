@@ -9,16 +9,6 @@ export class PlanSkillGenerator implements Generator {
 
     const lines: string[] = [];
 
-    // YAML frontmatter
-    lines.push("---");
-    lines.push("name: plan");
-    lines.push(`description: Review the build plan for ${ctx.projectName} before execution.`);
-    lines.push("  Shows dependency order, profile checks, and gate mode.");
-    lines.push("user-invocable: true");
-    lines.push("allowed-tools: Read, Glob, Grep");
-    lines.push("---");
-    lines.push("");
-
     lines.push(`# Build Plan Review: ${ctx.projectName}`);
     lines.push("");
 
@@ -89,7 +79,7 @@ export class PlanSkillGenerator implements Generator {
     lines.push("");
 
     return [{
-      path: ".claude/skills/plan/SKILL.md",
+      path: ".claude/commands/plan.md",
       content: lines.join("\n"),
     }];
   }

@@ -9,16 +9,6 @@ export class OrchestrateGenerator implements Generator {
 
     const lines: string[] = [];
 
-    // YAML frontmatter
-    lines.push("---");
-    lines.push("name: orchestrate");
-    lines.push(`description: Runs the full ${ctx.projectName} build in dependency order.`);
-    lines.push("  Dispatches independent components in parallel via subagents.");
-    lines.push("user-invocable: true");
-    lines.push("allowed-tools: Read, Write, Edit, Bash, Glob, Grep");
-    lines.push("---");
-    lines.push("");
-
     lines.push(`# Orchestration Plan: ${ctx.projectName}`);
     lines.push("");
 
@@ -69,28 +59,15 @@ export class OrchestrateGenerator implements Generator {
       lines.push("");
     }
 
-    // Post-build verification
-    if (ctx.profiles.length > 0) {
-      lines.push("## Post-Build Verification");
-      lines.push("");
-      lines.push("After all phases complete:");
-      for (const profile of ctx.profiles) {
-        lines.push(`1. Delegate to \`${profile.name.toLowerCase()}\` agent: "Review the full project for ${profile.name.toLowerCase()}-level concerns"`);
-      }
-      lines.push("");
-    }
-
-    // State update
-    lines.push("## State Update");
+    // Done section
+    lines.push("## Done");
     lines.push("");
-    lines.push("After successful build, update `.langc/state.json` with:");
-    lines.push("- Component statuses");
-    lines.push("- File paths created");
-    lines.push("- Timestamps");
+    lines.push("The build is complete when all phases have been executed successfully.");
+    lines.push("Verify that each component is working before considering the orchestration finished.");
     lines.push("");
 
     return [{
-      path: ".claude/skills/orchestrate/SKILL.md",
+      path: ".claude/commands/orchestrate.md",
       content: lines.join("\n"),
     }];
   }

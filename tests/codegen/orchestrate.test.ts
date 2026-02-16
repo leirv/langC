@@ -42,10 +42,10 @@ describe("OrchestrateGenerator", () => {
 
     const files = gen.generate(makeCtx(blocks, graph));
     expect(files).toHaveLength(1);
-    expect(files[0].path).toBe(".claude/skills/orchestrate/SKILL.md");
+    expect(files[0].path).toBe(".claude/commands/orchestrate.md");
   });
 
-  it("includes YAML frontmatter", () => {
+  it("has no YAML frontmatter", () => {
     const blocks: CreateBlock[] = [
       { kind: "CreateBlock", componentType: "DB", name: "data", properties: [], members: [], loc },
     ];
@@ -56,8 +56,24 @@ describe("OrchestrateGenerator", () => {
     };
 
     const files = gen.generate(makeCtx(blocks, graph));
-    expect(files[0].content).toMatch(/^---\n/);
-    expect(files[0].content).toContain("name: orchestrate");
+    expect(files[0].content).not.toMatch(/^---\n/);
+    expect(files[0].content).toMatch(/^# Orchestration Plan:/);
+  });
+
+  it("has Done section instead of Delegate/State", () => {
+    const blocks: CreateBlock[] = [
+      { kind: "CreateBlock", componentType: "DB", name: "data", properties: [], members: [], loc },
+    ];
+    const graph: DependencyGraph = {
+      nodes: new Map([["DB.data", { id: "DB.data", componentType: "DB", name: "data", dependsOn: [] }]]),
+      order: ["DB.data"],
+      phases: [["DB.data"]],
+    };
+
+    const files = gen.generate(makeCtx(blocks, graph));
+    expect(files[0].content).toContain("## Done");
+    expect(files[0].content).not.toContain("Delegate to");
+    expect(files[0].content).not.toContain("## State Update");
   });
 
   it("shows correct build order across phases", () => {

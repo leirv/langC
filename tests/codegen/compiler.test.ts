@@ -13,9 +13,9 @@ describe("Compiler", () => {
 
     const paths = files.map(f => f.path);
     expect(paths).toContain("CLAUDE.md");
-    expect(paths).toContain(".claude/skills/build-db-users-db/SKILL.md");
-    expect(paths).toContain(".claude/skills/build-api-users/SKILL.md");
-    expect(paths).toContain(".claude/skills/build-webui-users-display/SKILL.md");
+    expect(paths).toContain(".claude/commands/build-db-users-db.md");
+    expect(paths).toContain(".claude/commands/build-api-users.md");
+    expect(paths).toContain(".claude/commands/build-webui-users-display.md");
 
     // Context checks
     expect(context.projectName).toBe("test-app");

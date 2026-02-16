@@ -14,11 +14,11 @@ describe("E2E compilation", () => {
     expect(paths).toContain("CLAUDE.md");
     expect(paths).toContain(".langc/state.json");
 
-    // Skills
-    expect(paths).toContain(".claude/skills/build-db-users-db/SKILL.md");
-    expect(paths).toContain(".claude/skills/build-api-users/SKILL.md");
-    expect(paths).toContain(".claude/skills/build-webui-users-display/SKILL.md");
-    expect(paths).toContain(".claude/skills/orchestrate/SKILL.md");
+    // Commands
+    expect(paths).toContain(".claude/commands/build-db-users-db.md");
+    expect(paths).toContain(".claude/commands/build-api-users.md");
+    expect(paths).toContain(".claude/commands/build-webui-users-display.md");
+    expect(paths).toContain(".claude/commands/orchestrate.md");
 
     // Agents
     expect(paths).toContain(".claude/agents/architect.md");
@@ -42,8 +42,8 @@ describe("E2E compilation", () => {
     expect(paths).toContain(".claude/rules/python.md");
     expect(paths).toContain(".claude/rules/react.md");
 
-    // Plan skill
-    expect(paths).toContain(".claude/skills/plan/SKILL.md");
+    // Plan command
+    expect(paths).toContain(".claude/commands/plan.md");
   });
 
   it("CLAUDE.md contains correct dependency order", () => {
@@ -65,7 +65,7 @@ describe("E2E compilation", () => {
     const compiler = new Compiler();
     const { files } = compiler.compile(filePath);
 
-    const orchestrate = files.find(f => f.path === ".claude/skills/orchestrate/SKILL.md")!;
+    const orchestrate = files.find(f => f.path === ".claude/commands/orchestrate.md")!;
     expect(orchestrate.content).toContain("/build-db-users-db");
     expect(orchestrate.content).toContain("/build-api-users");
     expect(orchestrate.content).toContain("/build-webui-users-display");
