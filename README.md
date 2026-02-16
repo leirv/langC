@@ -477,6 +477,19 @@ src/
 5. **Generators never touch filesystem** — return `GeneratedFile[]`, testable by array assertions
 6. **Pipeline is additive** — each phase appends generators, never modifies existing ones
 
+## Why Commands, Not Skills?
+
+LangC originally generated Claude Code **skills** (`.claude/skills/*/SKILL.md`). The orchestrator would emit `Execute: /build-api-users`, but Claude had no mechanism to dispatch one skill from another — the line was just inert text.
+
+Claude Code **commands** (`.claude/commands/*.md`) solve this: they're plain markdown files that Claude can invoke natively via `/command-name`. Converting build skills to commands means:
+
+- `/orchestrate` can call `/build-db-users-db`, which actually runs
+- No YAML frontmatter needed — commands are plain markdown instructions
+- Each command includes an **Output Structure** section with concrete directory hints based on LNG/FRAMEWORK
+- Each command ends with a **Done** checklist so Claude knows when to stop
+
+This is the single change that makes the generated orchestration plan actually executable end-to-end.
+
 ## Development
 
 | Phase | Status | Description |
