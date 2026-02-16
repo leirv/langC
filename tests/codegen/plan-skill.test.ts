@@ -14,6 +14,8 @@ function makeCtx(blocks: CreateBlock[], graph: DependencyGraph, gate = "phase-by
     profiles: [{ name: "Architect", version: null, role: "Architect", rules: [], patterns: [], onReview: ["Check layers"] }],
     profileExcepts: new Map(),
     blockProfiles: new Map(),
+    projectCtx: null,
+    blockCtx: new Map(),
     createBlocks: blocks,
     updateBlocks: [],
     dependencyGraph: graph,
@@ -72,5 +74,22 @@ describe("PlanSkillGenerator", () => {
     const graph: DependencyGraph = { nodes: new Map(), order: [], phases: [] };
     const files = gen.generate(makeCtx([], graph));
     expect(files).toHaveLength(0);
+  });
+
+  it("includes project CTX as Context section", () => {
+    const blocks: CreateBlock[] = [
+      { kind: "CreateBlock", componentType: "DB", name: "data", properties: [], members: [], loc },
+    ];
+    const graph: DependencyGraph = {
+      nodes: new Map([["DB.data", { id: "DB.data", componentType: "DB", name: "data", dependsOn: [] }]]),
+      order: ["DB.data"],
+      phases: [["DB.data"]],
+    };
+
+    const ctx = makeCtx(blocks, graph);
+    ctx.projectCtx = "SOC2-compliant SaaS.";
+    const files = gen.generate(ctx);
+    expect(files[0].content).toContain("## Context");
+    expect(files[0].content).toContain("SOC2-compliant SaaS.");
   });
 });

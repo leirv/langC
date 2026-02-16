@@ -73,6 +73,41 @@ describe("Parser", () => {
     });
   });
 
+  describe("CTX property", () => {
+    it("parses project-level CTX", () => {
+      const ast = parseOk('PROJECT "app" { CTX = "Multi-tenant SaaS platform." }');
+      const proj = ast.declarations[0] as ProjectDecl;
+      expect(proj.properties).toHaveLength(1);
+      expect(proj.properties[0]).toMatchObject({ kind: "CtxProperty", value: "Multi-tenant SaaS platform." });
+    });
+
+    it("parses block-level CTX", () => {
+      const ast = parseOk(`PROJECT "app" {
+        CREATE API "users" {
+          CTX = "Core identity service.",
+          LNG = python
+        }
+      }`);
+      const proj = ast.declarations[0] as ProjectDecl;
+      const block = proj.blocks[0] as CreateBlock;
+      expect(block.properties[0]).toMatchObject({ kind: "CtxProperty", value: "Core identity service." });
+    });
+
+    it("parses CTX at both project and block level", () => {
+      const ast = parseOk(`PROJECT "app" {
+        CTX = "SaaS platform.",
+        CREATE API "users" {
+          CTX = "Identity service.",
+          LNG = python
+        }
+      }`);
+      const proj = ast.declarations[0] as ProjectDecl;
+      expect(proj.properties[0]).toMatchObject({ kind: "CtxProperty", value: "SaaS platform." });
+      const block = proj.blocks[0] as CreateBlock;
+      expect(block.properties[0]).toMatchObject({ kind: "CtxProperty", value: "Identity service." });
+    });
+  });
+
   describe("CREATE blocks", () => {
     it("parses CREATE DB with TABLE", () => {
       const ast = parseOk(`PROJECT "app" {

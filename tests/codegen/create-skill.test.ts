@@ -10,8 +10,12 @@ function makeCtx(blocks: CreateBlock[]): CompilationContext {
     projectName: "test-app",
     scope: "full",
     reference: "none",
+    gate: "phase-by-phase",
     profiles: [],
     profileExcepts: new Map(),
+    blockProfiles: new Map(),
+    projectCtx: null,
+    blockCtx: new Map(),
     createBlocks: blocks,
     updateBlocks: [],
     dependencyGraph: { nodes: new Map(), order: [], phases: [] },
@@ -110,5 +114,33 @@ describe("CreateSkillGenerator", () => {
     const files = gen.generate(makeCtx(blocks));
     expect(files[0].content).toContain("DB.users-db");
     expect(files[0].content).toContain("must be built first");
+  });
+
+  it("includes project and block CTX in Context section", () => {
+    const blocks: CreateBlock[] = [{
+      kind: "CreateBlock", componentType: "API", name: "users",
+      properties: [], members: [], loc,
+    }];
+    const ctx = makeCtx(blocks);
+    ctx.projectCtx = "Multi-tenant SaaS platform.";
+    ctx.blockCtx.set("API.users", "Core identity service.");
+
+    const files = gen.generate(ctx);
+    expect(files[0].content).toContain("## Context");
+    expect(files[0].content).toContain("**Project**: Multi-tenant SaaS platform.");
+    expect(files[0].content).toContain("**Component**: Core identity service.");
+  });
+
+  it("shows only project CTX when no block CTX", () => {
+    const blocks: CreateBlock[] = [{
+      kind: "CreateBlock", componentType: "API", name: "users",
+      properties: [], members: [], loc,
+    }];
+    const ctx = makeCtx(blocks);
+    ctx.projectCtx = "SaaS platform.";
+
+    const files = gen.generate(ctx);
+    expect(files[0].content).toContain("**Project**: SaaS platform.");
+    expect(files[0].content).not.toContain("**Component**");
   });
 });

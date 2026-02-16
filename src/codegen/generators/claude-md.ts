@@ -16,6 +16,13 @@ export class ClaudeMdGenerator implements Generator {
     lines.push(scopeDescription(ctx.scope));
     lines.push("");
 
+    // Context
+    if (ctx.projectCtx) {
+      lines.push("## Context");
+      lines.push(ctx.projectCtx);
+      lines.push("");
+    }
+
     // Reference — scan if path provided
     if (ctx.reference !== "none") {
       const scan = scanReference(ctx.reference);

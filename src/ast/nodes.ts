@@ -31,7 +31,7 @@ export interface ProjectDecl {
   loc: Loc;
 }
 
-export type ProjectProperty = ScopeProperty | ReferenceProperty | ProfilesProperty | GateProperty;
+export type ProjectProperty = ScopeProperty | ReferenceProperty | ProfilesProperty | GateProperty | CtxProperty;
 
 export interface ScopeProperty {
   kind: "ScopeProperty";
@@ -54,6 +54,12 @@ export interface ProfilesProperty {
 export interface GateProperty {
   kind: "GateProperty";
   value: string; // manual | phase-by-phase | auto | confirm-on-warning
+  loc: Loc;
+}
+
+export interface CtxProperty {
+  kind: "CtxProperty";
+  value: string;
   loc: Loc;
 }
 
@@ -93,7 +99,8 @@ export type ComponentProperty =
   | FrameworkProperty
   | ScopeProperty
   | DependsProperty
-  | ProfilesAddProperty;
+  | ProfilesAddProperty
+  | CtxProperty;
 
 export interface LngProperty {
   kind: "LngProperty";

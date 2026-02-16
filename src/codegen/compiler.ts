@@ -97,6 +97,7 @@ export class Compiler {
     const scope = this.getProjectProp(project, "ScopeProperty") ?? "full";
     const reference = this.getProjectProp(project, "ReferenceProperty") ?? "none";
     const gate = this.getProjectProp(project, "GateProperty") ?? "phase-by-phase";
+    const projectCtx = this.getProjectProp(project, "CtxProperty");
 
     // Get profile refs
     const profilesProp = project.properties.find(p => p.kind === "ProfilesProperty");
@@ -142,6 +143,15 @@ export class Compiler {
       createBlocks, ast, inlineProfiles, fileReader, filePath,
     );
 
+    // Build block-level CTX map
+    const blockCtx = new Map<string, string>();
+    for (const block of createBlocks) {
+      const ctxProp = block.properties.find(p => p.kind === "CtxProperty");
+      if (ctxProp && "value" in ctxProp) {
+        blockCtx.set(`${block.componentType}.${block.name}`, (ctxProp as { value: string }).value);
+      }
+    }
+
     // Build dependency graph
     const dependencyGraph = buildDependencyGraph(createBlocks);
 
@@ -153,6 +163,8 @@ export class Compiler {
       profiles,
       profileExcepts,
       blockProfiles,
+      projectCtx,
+      blockCtx,
       createBlocks,
       updateBlocks,
       dependencyGraph,

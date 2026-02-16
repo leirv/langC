@@ -49,6 +49,8 @@ export interface CompilationContext {
   createBlocks: CreateBlock[];
   updateBlocks: UpdateBlock[];
   dependencyGraph: DependencyGraph;
+  projectCtx: string | null;
+  blockCtx: Map<string, string>;  // block ID → CTX string
   ast: Program;
   project: ProjectDecl;
 }

@@ -14,6 +14,8 @@ function makeCtx(blocks: CreateBlock[] = []): CompilationContext {
     profiles: [{ name: "Architect", version: null, role: "Architect", rules: [], patterns: [], onReview: [] }],
     profileExcepts: new Map(),
     blockProfiles: new Map(),
+    projectCtx: null,
+    blockCtx: new Map(),
     createBlocks: blocks,
     updateBlocks: [],
     dependencyGraph: { nodes: new Map(), order: [], phases: [] },

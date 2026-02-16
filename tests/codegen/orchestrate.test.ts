@@ -13,8 +13,12 @@ function makeCtx(
     projectName: "test-app",
     scope: "full",
     reference: "none",
-    profiles: [{ name: "Architect", role: "Architect", rules: [], patterns: [], onReview: [] }],
+    gate: "phase-by-phase",
+    profiles: [{ name: "Architect", version: null, role: "Architect", rules: [], patterns: [], onReview: [] }],
     profileExcepts: new Map(),
+    blockProfiles: new Map(),
+    projectCtx: null,
+    blockCtx: new Map(),
     createBlocks: blocks,
     updateBlocks: [],
     dependencyGraph: graph,
@@ -103,5 +107,22 @@ describe("OrchestrateGenerator", () => {
     const ctx = makeCtx([], { nodes: new Map(), order: [], phases: [] });
     const files = gen.generate(ctx);
     expect(files).toHaveLength(0);
+  });
+
+  it("includes project CTX as Context section", () => {
+    const blocks: CreateBlock[] = [
+      { kind: "CreateBlock", componentType: "DB", name: "data", properties: [], members: [], loc },
+    ];
+    const graph: DependencyGraph = {
+      nodes: new Map([["DB.data", { id: "DB.data", componentType: "DB", name: "data", dependsOn: [] }]]),
+      order: ["DB.data"],
+      phases: [["DB.data"]],
+    };
+
+    const ctx = makeCtx(blocks, graph);
+    ctx.projectCtx = "Multi-tenant SaaS platform.";
+    const files = gen.generate(ctx);
+    expect(files[0].content).toContain("## Context");
+    expect(files[0].content).toContain("Multi-tenant SaaS platform.");
   });
 });

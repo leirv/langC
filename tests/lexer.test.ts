@@ -60,6 +60,7 @@ describe("Lexer", () => {
       expect(types("ON_REVIEW")).toEqual([TokenType.ON_REVIEW]);
       expect(types("none")).toEqual([TokenType.None]);
       expect(types("full")).toEqual([TokenType.Full]);
+      expect(types("CTX")).toEqual([TokenType.CTX]);
     });
   });
 

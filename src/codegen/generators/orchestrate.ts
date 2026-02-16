@@ -22,6 +22,13 @@ export class OrchestrateGenerator implements Generator {
     lines.push(`# Orchestration Plan: ${ctx.projectName}`);
     lines.push("");
 
+    // Context
+    if (ctx.projectCtx) {
+      lines.push("## Context");
+      lines.push(ctx.projectCtx);
+      lines.push("");
+    }
+
     // Dependency graph visualization
     lines.push("## Dependency Graph");
     lines.push("");

@@ -10,8 +10,12 @@ function makeCtx(overrides: Partial<CompilationContext> = {}): CompilationContex
     projectName: "test-app",
     scope: "full",
     reference: "none",
+    gate: "phase-by-phase",
     profiles: [],
     profileExcepts: new Map(),
+    blockProfiles: new Map(),
+    projectCtx: null,
+    blockCtx: new Map(),
     createBlocks: [],
     updateBlocks: [],
     dependencyGraph: { nodes: new Map(), order: [], phases: [] },
@@ -61,6 +65,17 @@ describe("ClaudeMdGenerator", () => {
     expect(files[0].content).toContain("### Architect Rules");
     expect(files[0].content).toContain("- Separate concerns");
     expect(files[0].content).toContain("- Use DI");
+  });
+
+  it("includes project CTX as Context section", () => {
+    const files = gen.generate(makeCtx({ projectCtx: "Multi-tenant SaaS platform." }));
+    expect(files[0].content).toContain("## Context");
+    expect(files[0].content).toContain("Multi-tenant SaaS platform.");
+  });
+
+  it("excludes Context section when no CTX", () => {
+    const files = gen.generate(makeCtx());
+    expect(files[0].content).not.toContain("## Context");
   });
 
   it("includes dependency order and build instructions", () => {

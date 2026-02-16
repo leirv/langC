@@ -29,6 +29,7 @@ export const keywords: Record<string, TokenType> = {
   EXTENDS: TokenType.EXTENDS,
   EXCEPT: TokenType.EXCEPT,
   GATE: TokenType.GATE,
+  CTX: TokenType.CTX,
   PUBLIC: TokenType.PUBLIC,
   GET: TokenType.GET,
   POST: TokenType.POST,

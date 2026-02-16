@@ -55,6 +55,16 @@ function generateSkillContent(
   }
   lines.push("");
 
+  // Context
+  const blockId = `${block.componentType}.${block.name}`;
+  const blockCtxVal = ctx.blockCtx.get(blockId);
+  if (ctx.projectCtx || blockCtxVal) {
+    lines.push("## Context");
+    if (ctx.projectCtx) lines.push(`**Project**: ${ctx.projectCtx}`);
+    if (blockCtxVal) lines.push(`**Component**: ${blockCtxVal}`);
+    lines.push("");
+  }
+
   // Members
   const methods = block.members.filter((m): m is MethodDecl => m.kind === "MethodDecl");
   const displays = block.members.filter((m): m is DisplayDecl => m.kind === "DisplayDecl");

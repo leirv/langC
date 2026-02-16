@@ -22,6 +22,13 @@ export class PlanSkillGenerator implements Generator {
     lines.push(`# Build Plan Review: ${ctx.projectName}`);
     lines.push("");
 
+    // Context
+    if (ctx.projectCtx) {
+      lines.push("## Context");
+      lines.push(ctx.projectCtx);
+      lines.push("");
+    }
+
     // Phases
     lines.push("## Execution Phases");
     lines.push("");

@@ -121,4 +121,28 @@ describe("incremental compilation", () => {
     expect(result.added).toEqual(["WEBUI.ui"]);
     expect(result.removed).toEqual(["FNC.cleanup"]);
   });
+
+  it("CTX change triggers recompilation", () => {
+    const block: CreateBlock = {
+      kind: "CreateBlock",
+      componentType: "API" as CreateBlock["componentType"],
+      name: "svc",
+      properties: [
+        { kind: "LngProperty", value: "python", loc },
+        { kind: "CtxProperty", value: "Identity service.", loc },
+      ],
+      members: [],
+      loc,
+    };
+
+    // Previous state with old checksum (no CTX)
+    const prevState = {
+      components: {
+        "API.svc": { checksum: "stale_checksum", status: "pending" },
+      },
+    };
+
+    const result = computeIncremental([block], prevState);
+    expect(result.changed).toEqual(["API.svc"]);
+  });
 });

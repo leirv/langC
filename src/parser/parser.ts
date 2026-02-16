@@ -2,7 +2,7 @@ import { Token, TokenType, Loc } from "../lexer/tokens.js";
 import { ParseErrorCollector, ParseError } from "./errors.js";
 import {
   Program, ImportDecl, Declaration, ProjectDecl, ProfileDecl,
-  ProjectProperty, ScopeProperty, ReferenceProperty, ProfilesProperty, GateProperty,
+  ProjectProperty, ScopeProperty, ReferenceProperty, ProfilesProperty, GateProperty, CtxProperty,
   ProfileRef, Block, CreateBlock, UpdateBlock,
   ComponentType, ComponentProperty, ComponentMember,
   LngProperty, FrameworkProperty, DependsProperty, ProfilesAddProperty,
@@ -109,6 +109,9 @@ export class Parser {
       } else if (this.check(TokenType.PROFILES)) {
         const prop = this.parseProfilesProperty();
         if (prop) properties.push(prop);
+      } else if (this.check(TokenType.CTX)) {
+        const prop = this.parseCtxProperty();
+        if (prop) properties.push(prop);
       } else if (this.check(TokenType.CREATE)) {
         const block = this.parseCreateBlock();
         if (block) blocks.push(block);
@@ -165,6 +168,16 @@ export class Parser {
 
     this.optionalComma();
     return { kind: "ReferenceProperty", value, loc };
+  }
+
+  private parseCtxProperty(): CtxProperty | null {
+    const loc = this.loc();
+    this.advance(); // CTX
+    this.consume(TokenType.Equals, "Expected '=' after CTX");
+    const valueToken = this.consume(TokenType.StringLiteral, "Expected string value for CTX");
+    if (!valueToken) return null;
+    this.optionalComma();
+    return { kind: "CtxProperty", value: valueToken.literal as string, loc };
   }
 
   private parseProfilesProperty(): ProfilesProperty | null {
@@ -241,6 +254,9 @@ export class Parser {
         if (prop) properties.push(prop);
       } else if (this.check(TokenType.PROFILES)) {
         const prop = this.parseProfilesAddProperty();
+        if (prop) properties.push(prop);
+      } else if (this.check(TokenType.CTX)) {
+        const prop = this.parseCtxProperty() as ComponentProperty;
         if (prop) properties.push(prop);
       } else if (this.check(TokenType.METHOD) || this.check(TokenType.PUBLIC)) {
         const m = this.parseMethodDecl();
@@ -682,7 +698,7 @@ export class Parser {
       TokenType.LNG, TokenType.FRAMEWORK, TokenType.SCOPE, TokenType.REFERENCE,
       TokenType.DEPENDS, TokenType.PROFILES, TokenType.ROLE, TokenType.RULES,
       TokenType.PATTERNS, TokenType.ON_REVIEW, TokenType.EXTENDS, TokenType.EXCEPT,
-      TokenType.GATE,
+      TokenType.GATE, TokenType.CTX,
       TokenType.PUBLIC, TokenType.GET, TokenType.POST, TokenType.PUT,
       TokenType.DELETE, TokenType.PATCH,
       TokenType.None, TokenType.Full, TokenType.Skeleton, TokenType.Prototype,

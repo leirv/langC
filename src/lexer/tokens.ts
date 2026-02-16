@@ -42,6 +42,7 @@ export enum TokenType {
   PATCH = "PATCH",
 
   GATE = "GATE",
+  CTX = "CTX",
 
   // Special identifiers
   None = "none",

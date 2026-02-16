@@ -11,6 +11,7 @@ IMPORT Architect FROM "./profiles/architect.langc"
 IMPORT Security FROM "./profiles/security.langc"
 
 PROJECT "test-app" {
+    CTX = "Multi-tenant SaaS platform for user management. SOC2 compliance required.",
     SCOPE = full,
     REFERENCE = none,
     PROFILES = [Architect, Security],
@@ -27,6 +28,7 @@ PROJECT "test-app" {
     },
 
     CREATE API "users" {
+        CTX = "Core identity service consumed by dashboard, mobile app, and third-party integrations.",
         LNG = python,
         FRAMEWORK = fastapi,
         DEPENDS = [DB.users-db],
@@ -273,6 +275,31 @@ Or override at apply time:
 langc apply my-app.langc --gate=auto
 ```
 
+## Business Context with CTX
+
+Add business context to your project and individual components. CTX strings flow into every generated file, giving Claude the *why* behind the structure:
+
+```langc
+PROJECT "my-app" {
+    CTX = "Multi-tenant SaaS platform. SOC2 compliance required.",
+    SCOPE = full,
+
+    CREATE API "users" {
+        CTX = "Core identity service consumed by dashboard, mobile, and third-party integrations.",
+        LNG = python,
+        FRAMEWORK = fastapi,
+        METHOD GET "/users" -> "list all users"
+    }
+}
+```
+
+**Context cascade**: Block-level CTX supplements project CTX — it doesn't replace it. Generated skill files show both when both exist.
+
+| Level | Where it appears |
+|-------|-----------------|
+| Project CTX | `CLAUDE.md`, orchestrate skill, plan skill |
+| Block CTX | Component skill files (alongside project CTX) |
+
 ## Profiles
 
 Profiles are expert agents that govern how code is generated and reviewed.
@@ -442,6 +469,7 @@ src/
 | Phase 3 | ✅ Complete | Human-in-the-loop — semantic validation, rich plan, compile with line counts, apply with phase gates (139 tests) |
 | Phase 4 | ✅ Complete | REFERENCE scanning, permissions, checksums, incremental compilation (165 tests) |
 | Phase 5 | ✅ Complete | Drift detection, resume from partial, deep profile conflicts, smart ON_REVIEW, REFERENCE overrides (187 tests) |
+| Phase 6 | ✅ Complete | Hierarchical CTX property — business context at project and block level, flows into all generated files (197 tests) |
 
 ### Running Tests
 
@@ -466,6 +494,7 @@ npm run langc -- apply examples/test-app.langc --gate=manual
 | `IMPORT Name FROM "path"` | Import a profile from another file |
 | `PROJECT "name" { ... }` | Define a project with components |
 | `SCOPE = full\|skeleton\|prototype` | Build scope (how complete) |
+| `CTX = "description"` | Business context (project or block level) |
 | `GATE = phase-by-phase\|manual\|auto` | Human approval gate mode |
 | `REFERENCE = "./path"\|none` | Existing codebase to match |
 | `PROFILES = [A, B]` | Expert profiles governing generation |

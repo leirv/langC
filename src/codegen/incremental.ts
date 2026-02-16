@@ -42,6 +42,7 @@ function serializeBlock(block: CreateBlock): string {
   for (const prop of block.properties) {
     if (prop.kind === "LngProperty") parts.push(`lng=${prop.value}`);
     if (prop.kind === "FrameworkProperty") parts.push(`fw=${prop.value}`);
+    if (prop.kind === "CtxProperty") parts.push(`ctx=${prop.value}`);
     if (prop.kind === "DependsProperty") {
       parts.push(`deps=${prop.refs.map(r => r.parts.join(".")).join(",")}`);
     }

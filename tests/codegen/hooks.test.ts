@@ -14,6 +14,8 @@ function makeCtx(profiles: ResolvedProfile[], blocks: CreateBlock[] = []): Compi
     profiles,
     profileExcepts: new Map(),
     blockProfiles: new Map(),
+    projectCtx: null,
+    blockCtx: new Map(),
     createBlocks: blocks,
     updateBlocks: [],
     dependencyGraph: { nodes: new Map(), order: [], phases: [] },
